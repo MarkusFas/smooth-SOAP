@@ -93,7 +93,7 @@ class FullMethodBase(ABC):
         self.cov1 = class_cov1 + between_cov1
         self.cov2 = class_cov2 + between_cov2
 
-        # Example: use PCA-based transformation
+        # Example: use PCA-based transformation for each center
         self.transformations = [PCA_obj(n_components=4, label=self.label) for n in range(cov1.shape[0])]
 
         for i, trafo in enumerate(self.transformations):
@@ -160,13 +160,13 @@ class FullMethodBase(ABC):
         np.add.at(h, i, w[:, None] * features[j])
 
         h += self_weight * features
-
+        h /= (self_weight + w.sum())
         # get calculate the gaussian weight
 
         # normalize vs all 
 
         # return the averaged features 
-        return h, cov
+        return h
         
 
 

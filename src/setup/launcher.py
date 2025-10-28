@@ -30,8 +30,11 @@ if __name__ == "__main__":
     #input_file = 'systems/icewater/test_interval1.yaml'
     
     input_file = 'systems/smallcell_interface_350/test_intervaltemp.yaml'
-    #input_file = 'systems/GeTe/test_interval1.yaml'
+    input_file = 'systems/smallcell_interface_350/test_intervalpcata.yaml'
+    input_file = 'systems/test_hannah/test_interval1.yaml'
     #input_file = 'systems/smallcell_interface_350/test_intervaltica.yaml'
+    
+    #input_file = 'systems/ice_water_sep/test_intervaltemp.yaml'
     user_cfg = load_config(input_file)
     params = merge_params(DEFAULT_PARAMS, user_cfg, input_file)
     setup_simulation(**params)

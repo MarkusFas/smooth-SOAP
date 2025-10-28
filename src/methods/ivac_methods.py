@@ -17,9 +17,9 @@ from src.methods.BaseMethod import FullMethodBase
 #TODO : add lag to self.label
 class TICA(FullMethodBase):
 
-    def __init__(self, descriptor, interval, lag, root):
+    def __init__(self, descriptor, interval, lag, sigma, root):
         self.name = 'TICA'
-        super().__init__(descriptor, interval, lag=lag, root=root,sigma=0, method=self.name)
+        super().__init__(descriptor, interval, lag=lag, root=root, sigma=sigma, method=self.name)
 
     def compute_COV(self, traj):
         """
@@ -68,32 +68,37 @@ class TICA(FullMethodBase):
 
         for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Computing SOAPs"):
             new_soap_values = self.descriptor.calculate([system]).values.numpy()
-            if fidx >= self.interval:
+            buffer[:,fidx%self.interval,:] = new_soap_values
+            
+            if fidx >= self.interval-1:
                 # computes a contribution to the correlation function
                 # the buffer contains data from fidx-maxlag to fidx. add a forward ACF
-                roll_kernel = np.roll(kernel, fidx%self.interval)
+                roll_kernel = np.roll(kernel, (fidx+1)%self.interval)
                 avg_soap = np.einsum("j,ija->ia", roll_kernel, buffer) #smoothen
-                for atom_type_idx, atom_type in enumerate(self.atomsel_element):
-                    sum_soaps[atom_type_idx] += avg_soap[atom_type].sum(axis=0)
-                    cov_t[atom_type_idx] += np.einsum("ia,ib->ab", avg_soap[atom_type], avg_soap[atom_type]) #sum over all same atoms (have already summed over all times before) 
-                    nsmp[atom_type_idx] += len(atom_type)
-                    ntimesteps[atom_type_idx] += 1
+                #avg_soap = self.spatial_averaging(system, avg_soap, self.sigma)
+                buffer_t[:,fidx%(self.lag+1),:] = avg_soap
 
-            if fidx >= self.interval + self.lag + 1:
-                roll_kernel = np.roll(kernel, fidx%self.lag)
+            if fidx >= self.interval + self.lag - 1:
                 # computes a contribution to the correlation function
                 # the buffer contains data from fidx-maxlag to fidx. add a forward ACF
                 soap_0 = buffer_t[:,fidx%(self.lag+1),:]
-                soap_lag = buffer_t[:,(fidx-1)%(self.lag+1),:]
+                soap_lag = buffer_t[:,(fidx+1)%(self.lag+1),:]
+
                 for atom_type_idx, atom_type in enumerate(self.atomsel_element):
+                    # C0
+                    sum_soaps[atom_type_idx] += soap_0[atom_type].sum(axis=0)
+                    sum_soaps[atom_type_idx] += soap_lag[atom_type].sum(axis=0)
+                    cov_t[atom_type_idx] += np.einsum("ia,ib->ab", soap_0[atom_type], soap_0[atom_type]) #sum over all same atoms (have already summed over all times before) 
+                    cov_t[atom_type_idx] += np.einsum("ia,ib->ab", soap_lag[atom_type], soap_lag[atom_type]) #sum over all same atoms (have already summed over all times before) 
+                    nsmp[atom_type_idx] += 2*len(atom_type)
+
                     sum_soaps_corr[atom_type_idx] += soap_0[atom_type].sum(axis=0)
                     corr_t[atom_type_idx] += np.einsum("ia,ib->ab", soap_0[atom_type], soap_lag[atom_type]) #sum over all same atoms (have already summed over all times before) 
                     nsmp_corr[atom_type_idx] += len(atom_type)
                     ntimesteps_corr[atom_type_idx] += 1
 
-            buffer[:,fidx%self.interval,:] = new_soap_values
-            if fidx >= self.interval:
-                buffer_t[:,fidx%(self.lag+1),:] = avg_soap
+
+            
                 
         mu = np.zeros((len(self.atomsel_element), new_soap_values.shape[1]))
         cov = np.zeros((len(self.atomsel_element), new_soap_values.shape[1], new_soap_values.shape[1]))

@@ -2,7 +2,7 @@ import os
 
 from ase.io.trajectory import Trajectory
 from itertools import chain
-
+import warnings
 from src.methods import PCA, IVAC, TICA, TempPCA, PCAfull, PCAtest, LDA, SpatialPCA
 from src.descriptors.SOAP import SOAP_descriptor
 from src.setup.simulation import run_simulation
@@ -48,7 +48,19 @@ def check_analysis_inputs(trajs, **kwargs):
     else:
         raise TypeError("interval must be an integer or list of integers")
 
-    
+    sigmas = kwargs["sigma"]
+
+    if isinstance(sigmas, int):
+        #TODO if intervals > len(trajs)
+        kwargs['sigma'] = [sigmas]
+    elif isinstance(sigmas, list):
+        if not all(isinstance(i, int) for i in sigmas):
+            raise TypeError("all elements of 'sigma' list must be integers")
+    else:
+        raise TypeError("sigma must be an integer or list of integers")
+
+
+
     if not isinstance(kwargs['train_selected_atoms'], list):
         if not isinstance(kwargs['train_selected_atoms'], int):
             raise TypeError("train_selected_atoms must be integer or list of integers")
@@ -69,7 +81,7 @@ def check_analysis_inputs(trajs, **kwargs):
 
     if isinstance(kwargs['train_selected_atoms'], list) and isinstance(kwargs['test_selected_atoms'], list):
         if set(kwargs['train_selected_atoms']) & set(kwargs['test_selected_atoms']):
-            raise ValueError("train selected atoms and test atoms shouldn't contain shared atoms")
+            warnings.warn("train selected atoms and test atoms shouldn't contain shared atoms")
     
     if not isinstance(kwargs['methods'], list):
         if not isinstance(kwargs['methods'], str):
@@ -143,6 +155,7 @@ def setup_simulation(**kwargs):
 
     methods_intervals = []  # nested list: intervals x methods
     lag = kwargs.get("lag")
+    sigma = kwargs.get("sigma")[0] #TODO loop over multiple sigmas should be possible
     for interval in kwargs.get('interval'):
         used_methods = []
         for method in opt_methods:
@@ -166,12 +179,11 @@ def setup_simulation(**kwargs):
                 method_obj = PCAtest(descriptor, interval, run_dir)
             elif method.upper() == 'SPATIALPCA':
                 #TODO add input check
-                sigma = kwargs.get('sigma')
                 method_obj = SpatialPCA(descriptor, interval, sigma, run_dir)
             elif method.upper() == 'LDA':
                 method_obj = LDA(descriptor, interval, run_dir)
             elif method.upper() == 'TICA':
-                method_obj = TICA(descriptor, interval, lag, run_dir)
+                method_obj = TICA(descriptor, interval, lag, sigma, run_dir)
             
             else:
                 raise NotImplementedError(f"Method must be one of {implemented_opt}, got {method}")

@@ -1,12 +1,12 @@
 from src.setup.read_data import read_trj, tamper_water_trj
 from src.old_scripts.descriptors import SOAP_mean, SOAP_full
 from src.transformations.PCAtransform import pcatransform, PCA_obj
-from src.timeaverages import timeaverage
+
 from src.old_scripts.fourier import fourier_trafo
 from src.visualize import plot_compare_timeave, plot_compare_atoms
 import numpy as np
 from tqdm import tqdm
-from deeptime_modules import run_analysis
+
 from pathlib import Path
 import os
 from random import shuffle
@@ -40,31 +40,42 @@ HYPER_PARAMETERS = {
 
 if __name__=='__main__':
 
-    trj1, ids_atoms = read_trj(data)
-    trj2, ids_atoms2 = read_trj(data2)
+    trj1 = read_trj(data)
+    trj2 = read_trj(data2)
     trj = trj1 + trj2
     #trj = trj1
     #trj = tamper_water_trj(trj)
     #trj = trj[:2]
     
-    oxygen_atoms = [idx for idx, number in enumerate(trj[0].get_atomic_numbers()) if number==8] # only oxygen atoms
-   
-    dir = f'results/GeTe/visual/SOAP_deeptime_single'
+    print('done loading the structures')
+    dir = f'results/interface_melts/visual_ice/CUTOFF/SOAP_deeptime_single'
     Path(dir).mkdir(parents=True, exist_ok=True)
     
-    label = f'SOAP_deeptime_single_GeTe_r{SOAP_cutoff}_maxang{SOAP_max_angular}_maxrad{SOAP_max_radial}'
+    label = f'SOAP_r{SOAP_cutoff}_maxang{SOAP_max_angular}_maxrad{SOAP_max_radial}'
     label = os.path.join(dir, label)
     
     ids_atoms_train = [atom.index for atom in trj[0] if atom.number == centers[0]]
-    shuffle(ids_atoms_train)
-    ids_atoms_train = ids_atoms_train[:10]
-    test_intervals = [1, 50, 250, 1000]
-    X_values = []
-    for interval in test_intervals:
-        X, properties = SOAP_full(trj, interval, ids_atoms_train, HYPER_PARAMETERS, centers, neighbors)
-        X_values.append(X[0]) # first center type TxNxD
-    SOAP_idx = np.random.randint(0, X_values[0].shape[-1], 6)
+    #random.seed(7)
+    #random.shuffle(ids_atoms_train)
+    ids_atoms_train = ids_atoms_train[-20:]
 
-    print('done with calculation')
-    #plot_compare_timeave(X_values, SOAP_idx, label, properties.values.numpy(), test_intervals)
-    plot_compare_atoms(X_values, SOAP_idx, label, properties.values.numpy(), test_intervals)
+    test_intervals = [1,100,1000]
+    X_values = []
+    #for interval in test_intervals:
+    interval =1 
+    sigma=0
+    test_sigmas = [0]
+    for interval in test_intervals:
+        X, properties = SOAP_full(trj, interval, ids_atoms_train, HYPER_PARAMETERS, centers, neighbors, sigma)
+        X_values.append(X[0]) # first center type TxNxD
+
+    for i in range(X_values[0].shape[-1]//20):
+        SOAP_idx = np.arange(i*20, (i+1)*20, 1)
+        #SOAP_idx = np.random.randint(0, X_values[0].shape[-1]//5, 25)
+
+        print(f'done with calculation for {20*i} - {20*(i+1)}')
+        label_used = label + f'_{i*20}-{20*(i+1)}'
+        #plot_compare_spatialave(X_values, SOAP_idx, label_used, properties.values.numpy(), test_sigmas)
+        #plot_compare_atoms_spat(X_values, SOAP_idx, label_used, properties.values.numpy(), test_sigmas)
+        plot_compare_timeave(X_values, SOAP_idx, label_used, properties.values.numpy(), test_intervals)
+        plot_compare_atoms(X_values, SOAP_idx, label_used, properties.values.numpy(), test_intervals)

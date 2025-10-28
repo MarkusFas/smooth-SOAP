@@ -18,7 +18,7 @@ def spatial_averaging(system, features, sigma, sel_atoms):
     # selects the wrong atom position here. Check SOAP samples & centers and order of SOAP feature
     # and compare to order of positions
     points = system.positions[sel_atoms]
-    calculator = NeighborList(cutoff=5.0, full_list=True)
+    calculator = NeighborList(cutoff=8.0, full_list=True)
     i, j, S, d = calculator.compute(
         points=points,
         box=system.cell,
@@ -36,13 +36,21 @@ def spatial_averaging(system, features, sigma, sel_atoms):
     np.add.at(h, i, w[:, None] * features[j])
 
     h += self_weight * features
+    
+    # ---- normalize by total weight per atom ----
+    weight_sum = np.zeros(len(sel_atoms))
+    np.add.at(weight_sum, i, w)
+    weight_sum += self_weight  # self-weight
+
+    h_norm = h / weight_sum[:, None]
+    
     h /= (self_weight + w.sum())
     # get calculate the gaussian weight
 
     # normalize vs all 
 
     # return the averaged features 
-    return h
+    return h #h_norm
 
 def eval_PETMAD(structures, atomsel):
     """

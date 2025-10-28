@@ -5,7 +5,7 @@ import numpy as np
 from tqdm import tqdm
 from pathlib import Path
 from itertools import chain
-
+import chemiscope
 from src.plots.cov_heatmap import plot_heatmap
 from src.plots.timeseries import plot_projection_atoms, plot_projection_atoms_models
 from src.plots.histograms import plot_2pca
@@ -27,19 +27,19 @@ def run_simulation(trj, methods_intervals, **kwargs):
             is_shuffled = False
             if isinstance(N_train , int):
                 selected_atoms = [idx for idx, number in enumerate(trj[0][0].get_atomic_numbers()) if number==method.descriptor.centers[0]]
-                random.shuffle(selected_atoms) 
-                train_atoms = selected_atoms[:N_train]
+                #random.shuffle(selected_atoms) 
+                train_atoms = selected_atoms[-N_train:]
                 is_shuffled = True
             else:
                 train_atoms = N_train
             if isinstance(N_test , int):
                 selected_atoms = [idx for idx, number in enumerate(trj[0][0].get_atomic_numbers()) if number==method.descriptor.centers[0]]
                 if not is_shuffled:
-                    random.shuffle(selected_atoms)
+                    #random.shuffle(selected_atoms)
                     test_atoms = selected_atoms[:N_test]
                 else:
                     test_atoms = selected_atoms[10+N_train: 10+N_train + N_test]
-                    test_atoms = selected_atoms[:N_test] # single atom case
+                    test_atoms = selected_atoms[-N_test:] # single atom case
             else:
                 test_atoms = N_test
         
@@ -72,6 +72,19 @@ def run_simulation(trj, methods_intervals, **kwargs):
 
             print('Plots saved at ' + method.label)
 
+            if "cs" in plots:
+                cs = chemiscope.show(trj[0],
+                    properties={
+                        "PC[0]": {"target": "atoms", "values":X[0][...,0].flatten()},
+                        "PC[1]": X[0][...,1].flatten(),
+                        "time": np.arange(X[0].shape[0]),
+                    },
+                    environments = [[i,j,4] for i in range(X[0].shape[0]) for j in test_atoms], # maybe range(X[0].shape[1])
+                    settings=chemiscope.quick_settings(periodic=True, trajectory=True, target="atom", map_settings={"joinPoints": False})
+                )
+                cs.save(method.label + '_cs.json')
+                print("saved chemiscope")
+
     if "heatmap" in plots and len(methods_intervals) >= 2:
         interval_0 = methods_intervals[0]
         interval_1 = methods_intervals[1]
@@ -83,7 +96,8 @@ def run_simulation(trj, methods_intervals, **kwargs):
             plot_heatmap(cov1_int0[i], cov1_int1[i], method.root + f'_temporal_interval{interval_0[0].interval}{interval_1[0].interval}_center{center}' + f'_{i}')
             plot_heatmap(cov2_int0[i], cov2_int1[i], method.root + f'_spatial_interval{interval_0[0].interval}{interval_1[0].interval}_center{center}' + f'_{i}')
         print('Plotted heatmap')
- 
+  
+    
 
 if __name__ == '__main__':
     print('Nothing to do here')

@@ -20,8 +20,8 @@ class LDA(FullMethodBase):
     def __init__(self, descriptor, interval, root):
         self.name = 'LDA'
         super().__init__(descriptor, interval, lag=0, root=root, sigma=0, method=self.name)
-        
 
+  
     def train(self, trajs, selected_atoms):
         """
         Train the method using a molecular dynamics trajectory.
@@ -67,14 +67,16 @@ class LDA(FullMethodBase):
         ) / total_N
 
         # Combine both parts
-        self.cov1 = class_cov1 + between_cov1
-        self.cov2 = class_cov2 + between_cov2
-
-        # Example: use PCA-based transformation
+        self.cov1 = class_cov1
+        self.cov2 = class_cov2
+        N1 = len()
+        self.inclass = (class_cov1*traj_N[0] + class_cov2*traj_N[1]) / total_N
+        self.class_diff = (traj_means[0]*traj_N[0] - traj_means[1]*traj_N[1]) / total_N
+        # Example: use PCA-based transformation for each center
         self.transformations = [PCA_obj(n_components=4, label=self.label) for n in range(cov1.shape[0])]
 
         for i, trafo in enumerate(self.transformations):
-            trafo.solve_GEV(self.mean[i], between_cov1[i] + between_cov2[i], class_cov1[i] + class_cov2[i])
+            trafo.solve_GEV(self.mean[i], self.class_diff[i], self.inclass[i])
 
 
     def compute_COV(self, traj):
@@ -174,8 +176,8 @@ class LDA(FullMethodBase):
         -------
         empty
         """
-        metrics = np.array([[np.trace(mean_cov), np.trace(cov_mu)] 
-                    for mean_cov, cov_mu in zip(self.mean_cov_t, self.cov_mu_t)])
+        metrics = np.array([[mean, np.trace(class_diff), np.trace(inclass)] 
+                    for mean, class_diff, inclass in zip(self.mean, self.class_diff, self.inclass)])
         header = ["spatialCov", "tempCov"]
 
         # Make metrics a 2D row vector: shape (1, 2)

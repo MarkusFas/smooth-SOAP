@@ -36,7 +36,7 @@ def plot_compare_atoms(X_values, SOAP_idx, label, properties, intervals):
         # plot different atoms
         
         for j, soap_i in enumerate(SOAP_idx):
-            ax[0,j].set_title(fr'$l$ {properties[soap_i,2]}, $n_1$ {properties[soap_i,3]}, $n_2$ {properties[soap_i,4]}')
+            ax[0,j].set_title(fr'{properties[soap_i,0]},{properties[soap_i,1]} $l$ {properties[soap_i,2]}, $n_1$ {properties[soap_i,3]}, $n_2$ {properties[soap_i,4]}')
             ax[0,j].set_xlabel('steps')
             mean = np.mean(X[:,:,soap_i], axis=1)
             std = np.std(X[:,:,soap_i], axis=1)
