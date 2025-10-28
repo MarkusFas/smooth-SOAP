@@ -97,9 +97,6 @@ class TICA(FullMethodBase):
                     nsmp_corr[atom_type_idx] += len(atom_type)
                     ntimesteps_corr[atom_type_idx] += 1
 
-
-            
-                
         mu = np.zeros((len(self.atomsel_element), new_soap_values.shape[1]))
         cov = np.zeros((len(self.atomsel_element), new_soap_values.shape[1], new_soap_values.shape[1]))
         mu_corr = np.zeros((len(self.atomsel_element), new_soap_values.shape[1]))
@@ -119,6 +116,8 @@ class TICA(FullMethodBase):
         self.corr = corr
         self.mu = mu
         self.mu_corr = mu_corr
+        if self.lag == 0:
+            return mu, corr, [np.eye(m.shape[0]) for m in corr]
         return mu, corr, cov
 
     def log_metrics(self):
@@ -219,61 +218,71 @@ class IVAC(FullMethodBase):
 
         for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Computing SOAPs"):
             new_soap_values = self.descriptor.calculate([system]).values.numpy()
-            if fidx >= self.interval:
-                # computes a contribution to the correlation function
-                # the buffer contains data from fidx-maxlag to fidx. add a forward ACF
-                roll_kernel = np.roll(kernel, fidx%self.interval)
-                avg_soap = np.einsum("j,ija->ia", roll_kernel, buffer) #smoothen
-                for atom_type_idx, atom_type in enumerate(self.atomsel_element):
-                    sum_soaps[atom_type_idx] += avg_soap[atom_type].sum(axis=0)
-                    cov_t[atom_type_idx] += np.einsum("ia,ib->ab", avg_soap[atom_type] - soap_mu[atom_type_idx], avg_soap[atom_type] - soap_mu[atom_type_idx]) #sum over all same atoms (have already summed over all times before) 
-                    nsmp[atom_type_idx] += len(atom_type)
-                    ntimesteps[atom_type_idx] += 1
-
-            if fidx >= self.interval + self.max_lag + 1:
-                # computes a contribution to the correlation function
-                # the buffer contains data from fidx-maxlag to fidx. add a forward ACF
-                soap_0 = buffer_t[:,fidx%self.max_lag,:]
-                soap_lags = [buffer_t[:,(fidx+lag)%self.max_lag,:] for lag in lags]
-                for atom_type_idx, atom_type in enumerate(self.atomsel_element):
-                    nsmp_corr[atom_type_idx] += len(atom_type)
-                    ntimesteps_corr[atom_type_idx] += 1
-                    sum_soaps_corr[atom_type_idx] += soap_0[atom_type].sum(axis=0)
-                    #delta_soap_0 = soap_0[atom_type] - soap_0_mu[atom_type_idx] 
-                    delta_soap_0 = soap_0[atom_type] - soap_mu[atom_type_idx] 
-                    #soap_0_mu[atom_type_idx] += delta_soap_0.mean(axis=0) / ntimesteps_corr[atom_type_idx]
-                    #TODO: test for only one
-                    for i, soap_lag in enumerate(soap_lags):
-                        #delta_soap_lag[i] = soap_lag[atom_type] - soap_lag_mu[atom_type_idx, i]
-                        delta_soap_lag[i] = soap_lag[atom_type] - soap_mu[atom_type_idx]
-                        #soap_lag_mu[atom_type_idx, i] += delta_soap_lag[i].mean(axis=0) / ntimesteps_corr[atom_type_idx]
-                        corr_t[atom_type_idx] += np.einsum("ia,ib->ab", delta_soap_0, delta_soap_lag[i]) #sum over all same atoms (have already summed over all times before) 
-
             buffer[:,fidx%self.interval,:] = new_soap_values
-            if fidx >= self.interval:
+            if fidx >= self.interval-1:
+                # computes a contribution to the correlation function
+                # the buffer contains data from fidx-maxlag to fidx. add a forward ACF
+                roll_kernel = np.roll(kernel, (fidx+1)%self.interval)
+                avg_soap = np.einsum("j,ija->ia", roll_kernel, buffer) #smoothen
+                #avg_soap = self.spatial_averaging(system, avg_soap, self.sigma)
                 buffer_t[:,fidx%(self.max_lag+1),:] = avg_soap
-                
+
+            for i, lag in enumerate(lags):
+                if fidx >= self.interval + lag - 1:
+
+                    # computes a contribution to the correlation function
+                    # the buffer contains data from fidx-maxlag to fidx. add a forward ACF
+                    soap_0 = buffer_t[:,fidx%(self.max_lag + 1),:]
+                    soap_lag = buffer_t[:,(fidx-lag)%(self.max_lag + 1),:]
+                    #soap_lags = [buffer_t[:,(fidx-lag)%(self.max_lag + 1),:] for lag in lags]
+                    for atom_type_idx, atom_type in enumerate(self.atomsel_element):
+                        # C0
+                        #delta_soap_0 = soap_0[atom_type] - soap_mu[atom_type_idx] 
+                        sum_soaps[atom_type_idx] += soap_0[atom_type].sum(axis=0)
+                        cov_t[atom_type_idx] += np.einsum("ia,ib->ab", soap_0[atom_type], soap_0[atom_type])# Ctau
+                        #delta_soap_lag = soap_lag[atom_type] - soap_mu[atom_type_idx]
+                        sum_soaps[atom_type_idx] += soap_lag[atom_type].sum(axis=0)
+                        cov_t[atom_type_idx] += np.einsum("ia,ib->ab", soap_lag[atom_type], soap_lag[atom_type])
+                        #cov_t[atom_type_idx] += np.einsum("ia,ib->ab", delta_soap_lag, delta_soap_lag) #sum over all same atoms (have already summed over all times before)
+                        #corr_t[atom_type_idx] += np.einsum("ia,ib->ab", delta_soap_lag, delta_soap_0)
+                        corr_t[atom_type_idx] += np.einsum("ia,ib->ab", soap_0[atom_type], soap_lag[atom_type])
+                        #nsmp[atom_type_idx] += (len(soap_lags) + 1)*len(atom_type)
+                        nsmp[atom_type_idx] += 2 * len(atom_type)
+                        nsmp_corr[atom_type_idx] += len(atom_type)
+                        #ntimesteps_corr[atom_type_idx] += 1
+                        #sum_soaps_corr[atom_type_idx] += soap_0[atom_type].sum(axis=0)
+                        #delta_soap_0 = soap_0[atom_type] - soap_0_mu[atom_type_idx] 
+                        
+                        #soap_0_mu[atom_type_idx] += delta_soap_0.mean(axis=0) / ntimesteps_corr[atom_type_idx]
+                        #TODO: test for only one
+                        #for i, soap_lag in enumerate(soap_lags):
+                            #delta_soap_lag[i] = soap_lag[atom_type] - soap_lag_mu[atom_type_idx, i]
+                        #   delta_soap_lag[i] = soap_lag[atom_type] - soap_mu[atom_type_idx]
+                            #soap_lag_mu[atom_type_idx, i] += delta_soap_lag[i].mean(axis=0) / ntimesteps_corr[atom_type_idx]
+                            #sum over all same atoms (have already summed over all times before) 
+
+
         mu = np.zeros((len(self.atomsel_element), new_soap_values.shape[1]))
         cov = np.zeros((len(self.atomsel_element), new_soap_values.shape[1], new_soap_values.shape[1]))
-        mu_corr = np.zeros((len(self.atomsel_element), new_soap_values.shape[1]))
+        #mu_corr = np.zeros((len(self.atomsel_element), new_soap_values.shape[1]))
         corr = np.zeros((len(self.atomsel_element), new_soap_values.shape[1], new_soap_values.shape[1]))
         
         # autocorrelation matrix - remove mean
         for atom_type_idx, atom_type in enumerate(self.atomsel_element):
             mu[atom_type_idx] = sum_soaps[atom_type_idx]/nsmp[atom_type_idx]
             # COV = 1/N ExxT - mumuT
-            cov[atom_type_idx] = cov_t[atom_type_idx]/nsmp[atom_type_idx] #- np.einsum('i,j->ij', mu[atom_type_idx], mu[atom_type_idx])
+            cov[atom_type_idx] = cov_t[atom_type_idx]/nsmp[atom_type_idx] - np.einsum('i,j->ij', mu[atom_type_idx], mu[atom_type_idx])
             
-            mu_corr[atom_type_idx] = sum_soaps_corr[atom_type_idx]/nsmp_corr[atom_type_idx]
+            #mu_corr[atom_type_idx] = sum_soaps_corr[atom_type_idx]/nsmp_corr[atom_type_idx]
             # COV = 1/N ExxT - mumuT
-            corr[atom_type_idx] = corr_t[atom_type_idx]/(nsmp_corr[atom_type_idx]*len(lags)) #- np.einsum('i,j->ij', mu[atom_type_idx], mu[atom_type_idx])
+            corr[atom_type_idx] = corr_t[atom_type_idx]/(nsmp_corr[atom_type_idx]) - np.einsum('i,j->ij', mu[atom_type_idx], mu[atom_type_idx])
         
         self.cov = cov
         self.corr = corr
-        self.mu = mu
-        self.mu_corr = mu_corr
+        self.mu = mu #soap_mu
+        #self.mu_corr = mu_corr
         #return soap_lag_mu.mean(axis=1), corr, cov
-        return soap_mu, corr, cov
+        return mu, corr, cov
         #return soap_mu, corr, [np.eye(c.shape[0]) for c in corr]
 
     def log_metrics(self):

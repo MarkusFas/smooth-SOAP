@@ -56,7 +56,7 @@ class PCA_obj:
         COV_1_reg = 0.5*(COV_1 + COV_1.T) + eps1*np.eye(COV_1.shape[0])
         
         factor = 1E-8
-        while(factor <= 1E-6):
+        while(factor <= 1E-5):
             eps2 = factor * np.trace(COV_2) / COV_2.shape[0]
             COV_2_reg = 0.5*(COV_2 + COV_2.T) + eps2*np.eye(COV_2.shape[0])
             try:
@@ -64,7 +64,7 @@ class PCA_obj:
                 break
             except np.linalg.LinAlgError:
                 factor *= 10
-
+            
         print(f'used a factor of {factor} for regularization')
         # reorder so that largest EV is first
         self.mu = mu

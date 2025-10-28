@@ -34,11 +34,7 @@ def check_file_input(**kwargs):
 
 
 def check_analysis_inputs(trajs, **kwargs):
-    if not isinstance(kwargs['lag'], int):
-        raise TypeError("lag must be an integer")
-
     intervals = kwargs["interval"]
-
     if isinstance(intervals, int):
         #TODO if intervals > len(trajs)
         kwargs['interval'] = [intervals]
@@ -48,18 +44,23 @@ def check_analysis_inputs(trajs, **kwargs):
     else:
         raise TypeError("interval must be an integer or list of integers")
 
+    lags = kwargs["lag"]
+    if isinstance(lags, int):
+        kwargs['lag'] = [lags]
+    elif isinstance(lags, list):
+        if not all(isinstance(i, int) for i in lags):
+            raise TypeError("all elements of 'lag' list must be integers")
+    else:
+        raise TypeError("lag must be an integer or list of integers")
+    
     sigmas = kwargs["sigma"]
-
-    if isinstance(sigmas, int):
-        #TODO if intervals > len(trajs)
+    if isinstance(sigmas, float) or isinstance(sigmas, int):
         kwargs['sigma'] = [sigmas]
     elif isinstance(sigmas, list):
-        if not all(isinstance(i, int) for i in sigmas):
-            raise TypeError("all elements of 'sigma' list must be integers")
+        if not all(isinstance(i, float) or isinstance(i, int) for i in sigmas):
+            raise TypeError("all elements of 'sigma' list must be integers or floats")
     else:
-        raise TypeError("sigma must be an integer or list of integers")
-
-
+        raise TypeError("sigma must be an integer, float or list of integers")
 
     if not isinstance(kwargs['train_selected_atoms'], list):
         if not isinstance(kwargs['train_selected_atoms'], int):
@@ -69,7 +70,7 @@ def check_analysis_inputs(trajs, **kwargs):
             raise TypeError("All elements of train_selected_atoms must be integers")
         if not all(atoms_idx < len(traj[0]) for atoms_idx in kwargs['train_selected_atoms'] for traj in trajs):
             raise ValueError(" Some of the selected atoms are not in the traj")
-        
+
     if not isinstance(kwargs['test_selected_atoms'], list):
         if not isinstance(kwargs['test_selected_atoms'], int):
             raise TypeError("test_selected_atoms must be integer or list of integers")
@@ -82,7 +83,7 @@ def check_analysis_inputs(trajs, **kwargs):
     if isinstance(kwargs['train_selected_atoms'], list) and isinstance(kwargs['test_selected_atoms'], list):
         if set(kwargs['train_selected_atoms']) & set(kwargs['test_selected_atoms']):
             warnings.warn("train selected atoms and test atoms shouldn't contain shared atoms")
-    
+
     if not isinstance(kwargs['methods'], list):
         if not isinstance(kwargs['methods'], str):
             raise TypeError('methods need to be a str or List of str')
@@ -158,37 +159,40 @@ def setup_simulation(**kwargs):
     sigma = kwargs.get("sigma")[0] #TODO loop over multiple sigmas should be possible
     for interval in kwargs.get('interval'):
         used_methods = []
-        for method in opt_methods:
-            run_dir = f'results/{system}/{version}/{kwargs.get("descriptor")}/{descriptor_id}/{specifier}/'
-            
-            # Instantiate method
-            method_obj = None
-            if method.upper() == 'PCA':
-                method_obj = PCA(descriptor, interval, run_dir)
-            elif method.upper() == 'IVAC':
-                #TODO: input checks for the lag parameters
-                max_lag = kwargs.get("max_lag")
-                min_lag = kwargs.get("min_lag")
-                lag_step = kwargs.get("lag_step")
-                method_obj = IVAC(descriptor, interval, max_lag, min_lag, lag_step, run_dir)
-            elif method.upper() == 'TEMPPCA':
-                method_obj = TempPCA(descriptor, interval, run_dir)
-            elif method.upper() == 'PCAFULL':
-                method_obj = PCAfull(descriptor, interval, run_dir)
-            elif method.upper() == 'PCATEST':
-                method_obj = PCAtest(descriptor, interval, run_dir)
-            elif method.upper() == 'SPATIALPCA':
-                #TODO add input check
-                method_obj = SpatialPCA(descriptor, interval, sigma, run_dir)
-            elif method.upper() == 'LDA':
-                method_obj = LDA(descriptor, interval, run_dir)
-            elif method.upper() == 'TICA':
-                method_obj = TICA(descriptor, interval, lag, sigma, run_dir)
-            
-            else:
-                raise NotImplementedError(f"Method must be one of {implemented_opt}, got {method}")
+        for lag in kwargs.get('lag'):
+            for sigma in kwargs.get('sigma'):
+                for method in opt_methods:
+                    run_dir = f'results/{system}/{version}/{kwargs.get("descriptor")}/{descriptor_id}/{specifier}/'
+                    
+                    # Instantiate method
+                    method_obj = None
+                    if method.upper() == 'PCA':
+                        method_obj = PCA(descriptor, interval, run_dir)
+                    elif method.upper() == 'IVAC':
+                        #TODO: input checks for the lag parameters
+                        max_lag = kwargs.get("max_lag")
+                        min_lag = kwargs.get("min_lag")
+                        lag_step = kwargs.get("lag_step")
+                        method_obj = IVAC(descriptor, interval, max_lag, min_lag, lag_step, run_dir)
+                    elif method.upper() == 'TEMPPCA':
+                        method_obj = TempPCA(descriptor, interval, run_dir)
+                    elif method.upper() == 'PCAFULL':
+                        method_obj = PCAfull(descriptor, interval, run_dir)
+                    elif method.upper() == 'PCATEST':
+                        method_obj = PCAtest(descriptor, interval, run_dir)
+                    elif method.upper() == 'SPATIALPCA':
+                        #TODO add input check
+                        method_obj = SpatialPCA(descriptor, interval, sigma, run_dir)
+                    elif method.upper() == 'LDA':
+                        method_obj = LDA(descriptor, interval, run_dir)
+                    elif method.upper() == 'TICA':
+                        method_obj = TICA(descriptor, interval, lag, sigma, run_dir)
+                    
+                    else:
+                        raise NotImplementedError(f"Method must be one of {implemented_opt}, got {method}")
 
-            used_methods.append(method_obj)
+                    used_methods.append(method_obj)
+
         methods_intervals.append(used_methods)
 
     # TODO: check requested plots
