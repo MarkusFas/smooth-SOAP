@@ -110,9 +110,16 @@ class PCA(FullMethodBase):
             header="\t".join(header),
             comments=""
         )
+        for i, trafo in enumerate(self.transformations):
+            torch.save(
+                torch.tensor(trafo.eigvals.copy()),
+                self.label + f"_center{self.descriptor.centers[i]}" + f"_eigvals.pt",
+            )
 
-        # Make metrics a 2D row vector: shape (1, 2)
-        torch.save(self.label + "eigval_.pt", self.eigvals)
+            torch.save(
+                torch.tensor(trafo.eigvecs.copy()),
+                self.label + f"_center{self.descriptor.centers[i]}" + f"_eigvecs.pt",
+            ) 
 
 class PCAtest(FullMethodBase):
 

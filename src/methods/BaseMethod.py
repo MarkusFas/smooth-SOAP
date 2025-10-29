@@ -152,6 +152,23 @@ class FullMethodBase(ABC):
         i = i.astype(np.int64)
         j = j.astype(np.int64)
         d = d.astype(np.float64)
+
+        """# TODO: check which of the atoms in the cutoff have already soaps
+        neighbors = {}
+        neighbor_soaps = []
+        for atom_idx in self.selected_atoms:
+            
+            sel_samples = Labels(
+                names=["atom"],
+                values=torch.tensor(j[i == atom_idx], dtype=torch.int64).unsqueeze(-1),
+            )
+       
+            for neigh_idx in j[i == atom_idx]:
+                if neigh_idx in self.selected_atoms: # as for those we already have a precomputed SOAP
+                    neighbor_soaps.append(features[np.where(self.selected_atoms == neigh_idx)[0][0]])
+                else:
+                    neighbor_soaps.append(self.descriptor.calculate([system], sel_samples)) #TODO"""
+        # compute for those without
         # get distance 
         w = np.exp(-d**2 / (2*sigma**2), dtype=np.float64)     # pairwise weights
         # add self-weight term separately later

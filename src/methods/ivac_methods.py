@@ -141,6 +141,17 @@ class TICA(FullMethodBase):
             comments=""
         )
 
+        for trafo in self.transformations:
+            torch.save(
+                torch.tensor(trafo.eigvals.copy()),
+                self.label + f"_center{self.descriptor.centers[i]}" + f"_eigvals.pt",
+            )
+
+            torch.save(
+                torch.tensor(trafo.eigvecs.copy()),
+                self.label + f"_center{self.descriptor.centers[i]}" + f"_eigvecs.pt",
+            ) 
+
 
 class IVAC(FullMethodBase):
 
@@ -201,20 +212,6 @@ class IVAC(FullMethodBase):
         soap_0_mu = np.zeros((len(self.atomsel_element), first_soap.shape[1],))
         soap_lag_mu = np.zeros((len(self.atomsel_element), len(lags), first_soap.shape[1],))
 
-        #precompute mean to test
-        for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="preComputing SOAP means"):
-            if fidx >= self.interval:
-                roll_kernel = np.roll(kernel, fidx%self.interval)
-                avg_soap = np.einsum("j,ija->ia", roll_kernel, buffer)
-                for atom_type_idx, atom_type in enumerate(self.atomsel_element):
-                    sum_soaps[atom_type_idx] += avg_soap[atom_type].sum(axis=0)
-                    nsmp[atom_type_idx] += len(atom_type)
-
-        soap_mu = np.zeros((len(self.atomsel_element),first_soap.shape[1],))
-        for atom_type_idx, atom_type in enumerate(self.atomsel_element):
-            soap_mu[atom_type_idx] = sum_soaps / nsmp[atom_type_idx]
-        sum_soaps = np.zeros((len(self.atomsel_element),first_soap.shape[1],))
-        nsmp = np.zeros(len(self.atomsel_element))
 
         for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Computing SOAPs"):
             new_soap_values = self.descriptor.calculate([system]).values.numpy()
@@ -286,12 +283,22 @@ class IVAC(FullMethodBase):
         #return soap_mu, corr, [np.eye(c.shape[0]) for c in corr]
 
     def log_metrics(self):
-            """
-            Log metrics from the run, including the covariances.
+        """
+        Log metrics from the run, including the covariances.
 
-            
-            Returns
-            -------
-            empty
-            """
-            pass
+        
+        Returns
+        -------
+        empty
+        """
+
+        for i, trafo in enumerate(self.transformations):
+            torch.save(
+                self.label + f"_center{self.descriptor.centers[i]}" + f"_eigvals.pt",
+                torch.tensor(trafo.eigvals),
+            )
+
+            torch.save(
+                self.label + f"_center{self.descriptor.centers[i]}" + f"_eigvecs.pt",
+                torch.tensor(trafo.eigvecs),
+            )

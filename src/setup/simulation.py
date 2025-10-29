@@ -27,15 +27,15 @@ def run_simulation(trj, methods_intervals, **kwargs):
             is_shuffled = False
             if isinstance(N_train , int):
                 selected_atoms = [idx for idx, number in enumerate(trj[0][0].get_atomic_numbers()) if number==method.descriptor.centers[0]]
-                #random.shuffle(selected_atoms) 
-                train_atoms = selected_atoms[-N_train:]
+                random.shuffle(selected_atoms) 
+                train_atoms = selected_atoms[:N_train]
                 is_shuffled = True
             else:
                 train_atoms = N_train
             if isinstance(N_test , int):
                 selected_atoms = [idx for idx, number in enumerate(trj[0][0].get_atomic_numbers()) if number==method.descriptor.centers[0]]
                 if not is_shuffled:
-                    #random.shuffle(selected_atoms)
+                    random.shuffle(selected_atoms)
                     test_atoms = selected_atoms[:N_test]
                 else:
                     test_atoms = selected_atoms[10+N_train: 10+N_train + N_test]

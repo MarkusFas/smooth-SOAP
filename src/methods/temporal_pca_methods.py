@@ -133,3 +133,14 @@ class TempPCA(FullMethodBase):
             header="\t".join(header),
             comments=""
         )
+
+        for i, trafo in enumerate(self.transformations):
+            torch.save(
+                torch.tensor(trafo.eigvals.copy()),
+                self.label + f"_center{self.descriptor.centers[i]}" + f"_eigvals.pt",
+            )
+
+            torch.save(
+                torch.tensor(trafo.eigvecs.copy()),
+                self.label + f"_center{self.descriptor.centers[i]}" + f"_eigvecs.pt",
+            ) 
