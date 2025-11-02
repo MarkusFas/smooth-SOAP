@@ -54,11 +54,12 @@ class SOAP_descriptor():
             values=torch.tensor(selected_atoms, dtype=torch.int64).unsqueeze(-1),
         )
 
-    def calculate(self, systems):
-        
+    def calculate(self, systems, sel_samples=None):
+        if sel_samples is None:
+            sel_samples = self.sel_samples
         soap = self.calculator(
             systems,
-            selected_samples=self.sel_samples,
+            selected_samples=sel_samples,
             selected_keys=self.sel_keys,
         )
         

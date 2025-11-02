@@ -55,19 +55,23 @@ def run_simulation(trj, methods_intervals, **kwargs):
 
             trj_predict = list(chain(*trj))
             X = method.predict(trj_predict, test_atoms) ##centers T,N,P
+            X_ridge = method.predict_ridge(trj_predict, test_atoms)
             X = [proj.transpose(1,0,2) for proj in X]
-            
+            X_ridge = [proj.transpose(1,0,2) for proj in X_ridge]
             #4 Post processing
             plots = kwargs.get("plots", [])
 
             if "projection" in plots:
                 plot_projection_atoms(X, [0,1,2,3], method.label, [method.interval]) # need to transpose to T,N,P
+                plot_projection_atoms(X_ridge, [0,1,2,3], method.label + '_ridge', [method.interval]) # need to transpose to T,N,P
                 #plot_projection_atoms_models(X, [0,1,2,3], label, [method.interval])
                 print('Plotted projected timeseries for test atoms')
 
             if "pca" in plots:
                 for i, proj in enumerate(X):
                     plot_2pca(proj, method.label + f'_{i}')
+                for i, proj in enumerate(X_ridge):
+                    plot_2pca(proj, method.label + f'_ridge_{i}')
                 print('Plotted scatterplot of PCA')
 
             print('Plots saved at ' + method.label)

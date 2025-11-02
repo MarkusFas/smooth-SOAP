@@ -3,7 +3,7 @@ import os
 from ase.io.trajectory import Trajectory
 from itertools import chain
 import warnings
-from src.methods import PCA, IVAC, TICA, TempPCA, PCAfull, PCAtest, LDA, SpatialPCA
+from src.methods import PCA, IVAC, TICA, TempPCA, PCAfull, PCAtest, LDA, SpatialPCA, SpatialTempPCA
 from src.descriptors.SOAP import SOAP_descriptor
 from src.setup.simulation import run_simulation
 from src.setup.simulation_test import run_simulation_test
@@ -62,6 +62,15 @@ def check_analysis_inputs(trajs, **kwargs):
     else:
         raise TypeError("sigma must be an integer, float or list of integers")
 
+    spatial_cutoff = kwargs["spatial_cutoff"]
+    if isinstance(spatial_cutoff, float) or isinstance(spatial_cutoff, int):
+        kwargs['spatial_cutoff'] = [spatial_cutoff]
+    elif isinstance(spatial_cutoff, list):
+        if not all(isinstance(i, float) or isinstance(i, int) for i in spatial_cutoff):
+            raise TypeError("all elements of 'spatial_cutoff' list must be integers or floats")
+    else:
+        raise TypeError("spatial_cutoff must be an integer, float or list thereof")
+    
     if not isinstance(kwargs['train_selected_atoms'], list):
         if not isinstance(kwargs['train_selected_atoms'], int):
             raise TypeError("train_selected_atoms must be integer or list of integers")
@@ -161,37 +170,41 @@ def setup_simulation(**kwargs):
         used_methods = []
         for lag in kwargs.get('lag'):
             for sigma in kwargs.get('sigma'):
-                for method in opt_methods:
-                    run_dir = f'results/{system}/{version}/{kwargs.get("descriptor")}/{descriptor_id}/{specifier}/'
-                    
-                    # Instantiate method
-                    method_obj = None
-                    if method.upper() == 'PCA':
-                        method_obj = PCA(descriptor, interval, run_dir)
-                    elif method.upper() == 'IVAC':
-                        #TODO: input checks for the lag parameters
-                        max_lag = kwargs.get("max_lag")
-                        min_lag = kwargs.get("min_lag")
-                        lag_step = kwargs.get("lag_step")
-                        method_obj = IVAC(descriptor, interval, max_lag, min_lag, lag_step, run_dir)
-                    elif method.upper() == 'TEMPPCA':
-                        method_obj = TempPCA(descriptor, interval, run_dir)
-                    elif method.upper() == 'PCAFULL':
-                        method_obj = PCAfull(descriptor, interval, run_dir)
-                    elif method.upper() == 'PCATEST':
-                        method_obj = PCAtest(descriptor, interval, run_dir)
-                    elif method.upper() == 'SPATIALPCA':
-                        #TODO add input check
-                        method_obj = SpatialPCA(descriptor, interval, sigma, run_dir)
-                    elif method.upper() == 'LDA':
-                        method_obj = LDA(descriptor, interval, run_dir)
-                    elif method.upper() == 'TICA':
-                        method_obj = TICA(descriptor, interval, lag, sigma, run_dir)
-                    
-                    else:
-                        raise NotImplementedError(f"Method must be one of {implemented_opt}, got {method}")
+                for spatial_cutoff in kwargs.get('spatial_cutoff'):
+                    for method in opt_methods:
+                        run_dir = f'results/{system}/{version}/{kwargs.get("descriptor")}/{descriptor_id}/{specifier}/'
+                        
+                        # Instantiate method
+                        method_obj = None
+                        if method.upper() == 'PCA':
+                            method_obj = PCA(descriptor, interval, run_dir)
+                        elif method.upper() == 'IVAC':
+                            #TODO: input checks for the lag parameters
+                            max_lag = kwargs.get("max_lag")
+                            min_lag = kwargs.get("min_lag")
+                            lag_step = kwargs.get("lag_step")
+                            method_obj = IVAC(descriptor, interval, max_lag, min_lag, lag_step, run_dir)
+                        elif method.upper() == 'TEMPPCA':
+                            method_obj = TempPCA(descriptor, interval, run_dir)
+                        elif method.upper() == 'PCAFULL':
+                            method_obj = PCAfull(descriptor, interval, run_dir)
+                        elif method.upper() == 'PCATEST':
+                            method_obj = PCAtest(descriptor, interval, run_dir)
+                        elif method.upper() == 'SPATIALPCA':
+                            #TODO add input check
+                            method_obj = SpatialPCA(descriptor, interval, sigma, spatial_cutoff, run_dir)
+                        elif method.upper() == 'SPATIALTEMPPCA':
+                            #TODO add input check
+                            method_obj = SpatialTempPCA(descriptor, interval, sigma, spatial_cutoff, run_dir)
+                        elif method.upper() == 'LDA':
+                            method_obj = LDA(descriptor, interval, run_dir)
+                        elif method.upper() == 'TICA':
+                            method_obj = TICA(descriptor, interval, lag, sigma, run_dir)
+                        
+                        else:
+                            raise NotImplementedError(f"Method must be one of {implemented_opt}, got {method}")
 
-                    used_methods.append(method_obj)
+                        used_methods.append(method_obj)
 
         methods_intervals.append(used_methods)
 

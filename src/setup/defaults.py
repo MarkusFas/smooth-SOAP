@@ -10,6 +10,7 @@ DEFAULT_PARAMS = {
     "lag_step": 20,
     "sigma": 0,
     "methods": "PCA",
+    "spatial_cutoff": 0,
     "train_selected_atoms": 1,
     "test_selected_atoms": 1,
 
