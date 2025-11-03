@@ -65,8 +65,8 @@ class SOAP_descriptor():
         
         soap = soap.keys_to_samples("center_type")
         soap = soap.keys_to_properties(["neighbor_1_type", "neighbor_2_type"])
-        soap_block = soap.block().values.numpy()
-        return soap_block #TODO: return numpy
+        self.soap_block = soap.block()
+        return self.soap_block.values.numpy() #TODO: return numpy
     
 
 class SOAP_descriptor_special():
@@ -123,7 +123,8 @@ class SOAP_descriptor_special():
         
         soap = soap.keys_to_samples("center_type")
         soap = soap.keys_to_properties(["neighbor_1_type", "neighbor_2_type"])
-        soap_block = soap.block().values.numpy()
+        self.soap_block = soap.block()
+        soap_block = self.soap_block.values.numpy()
         N,S = soap_block.shape
         return soap_block.reshape(1, -1) #TODO: return numpy
     

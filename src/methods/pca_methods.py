@@ -51,9 +51,11 @@ class PCA(FullMethodBase):
         """
         systems = systems_to_torch(traj, dtype=torch.float64)
         soap_block = self.descriptor.calculate(systems[:1])
-        first_soap = soap_block   
-        self.atomsel_element = [[idx for idx, label in enumerate(soap_block.samples ) if label[2] == atom_type] for atom_type in self.descriptor.centers]
-
+        first_soap = soap_block  
+        self.atomsel_element = [[idx for idx, label in enumerate(self.descriptor.soap_block.samples.values.numpy()) if label[2] == atom_type] for atom_type in self.descriptor.centers]
+        if soap_block.shape[0] == 1:
+            self.atomsel_element = [[0] for atom_type in self.descriptor.centers]
+        
         buffer = np.zeros((first_soap.shape[0], self.interval, first_soap.shape[1]))
         cov_t = np.zeros((len(self.atomsel_element), first_soap.shape[1], first_soap.shape[1],))
         sum_soaps = np.zeros((len(self.atomsel_element),first_soap.shape[1],))
@@ -64,7 +66,7 @@ class PCA(FullMethodBase):
         ntimesteps = np.zeros(len(self.atomsel_element), dtype=int)
 
         for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Computing SOAPs"):
-            new_soap_values = self.descriptor.calculate([system]) 
+            new_soap_values = self.descriptor.calculate([system])
             if fidx >= self.interval:
                 roll_kernel = np.roll(kernel, fidx%self.interval)
                 # computes a contribution to the correlation function
@@ -156,9 +158,10 @@ class PCAtest(FullMethodBase):
         """
         systems = systems_to_torch(traj, dtype=torch.float64)
         soap_block = self.descriptor.calculate(systems[:1])
-        first_soap = soap_block   
-        self.atomsel_element = [[idx for idx, label in enumerate(soap_block.samples ) if label[2] == atom_type] for atom_type in self.descriptor.centers]
-
+        first_soap =  soap_block  
+        self.atomsel_element = [[idx for idx, label in enumerate(self.descriptor.soap_block.samples.values.numpy()) if label[2] == atom_type] for atom_type in self.descriptor.centers]
+        if soap_block.shape[0] == 1:
+            self.atomsel_element = [[0] for atom_type in self.descriptor.centers]
         buffer = np.zeros((first_soap.shape[0], self.interval, first_soap.shape[1]))
         cov_t = np.zeros((len(self.atomsel_element), first_soap.shape[1], first_soap.shape[1],))
         sum_soaps = np.zeros((len(self.atomsel_element),first_soap.shape[1],))
@@ -170,7 +173,7 @@ class PCAtest(FullMethodBase):
         ntimesteps = np.zeros(len(self.atomsel_element), dtype=int)
 
         for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Computing SOAPs"):
-            new_soap_values = self.descriptor.calculate([system]) 
+            new_soap_values = self.descriptor.calculate([system])
             if fidx >= self.interval:
                 roll_kernel = np.roll(kernel, fidx%self.interval)
                 # computes a contribution to the correlation function
@@ -253,9 +256,10 @@ class PCAfull(FullMethodBase):
         """
         systems = systems_to_torch(traj, dtype=torch.float64)
         soap_block = self.descriptor.calculate(systems[:1])
-        first_soap = soap_block   
-        self.atomsel_element = [[idx for idx, label in enumerate(soap_block.samples ) if label[2] == atom_type] for atom_type in self.descriptor.centers]
-    
+        first_soap =  soap_block  
+        self.atomsel_element = [[idx for idx, label in enumerate(self.descriptor.soap_block.samples.values.numpy()) if label[2] == atom_type] for atom_type in self.descriptor.centers]
+        if soap_block.shape[0] == 1:
+            self.atomsel_element = [[0] for atom_type in self.descriptor.centers]
         buffer = np.zeros((first_soap.shape[0], self.interval, first_soap.shape[1]))
         cov_t = np.zeros((len(self.atomsel_element), first_soap.shape[1], first_soap.shape[1],))
         sum_mu_t = np.zeros((len(self.atomsel_element),first_soap.shape[1],))
@@ -271,7 +275,7 @@ class PCAfull(FullMethodBase):
         #plt.savefig(self.label + '_kernel.png')
         #plt.close()
         for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Computing SOAPs"):
-            new_soap_values = self.descriptor.calculate([system]) 
+            new_soap_values = self.descriptor.calculate([system])
             if fidx >= self.interval:
                 roll_kernel = np.roll(kernel, fidx%self.interval)
                 # computes a contribution to the correlation function
@@ -314,7 +318,7 @@ class PCAfull(FullMethodBase):
             # add temporal covariance
             cov_mu_t[atom_type_idx] = scatter_mut[atom_type_idx]/ntimesteps[atom_type_idx] - np.einsum('i,j->ij', mean_mu_t[atom_type_idx], mean_mu_t[atom_type_idx])
 
-        #all_soap_values = eval_SOAP(systems, calculator, sel, atomsel) 
+        #all_soap_values = eval_SOAP(systems, calculator, sel, atomsel).values.numpy()
         #C_np = np.cov(all_soap_values, rowvar=False, bias=True)   # population covariance
         #print(np.allclose(C_np, avgcc[0], atol=1e-8))
 
@@ -406,9 +410,10 @@ class SpatialPCA(FullMethodBase):
         """
         systems = systems_to_torch(traj, dtype=torch.float64)
         soap_block = self.descriptor.calculate(systems[:1])
-        first_soap = soap_block   
-        self.atomsel_element = [[idx for idx, label in enumerate(soap_block.samples ) if label[2] == atom_type] for atom_type in self.descriptor.centers]
-    
+        first_soap =  soap_block  
+        self.atomsel_element = [[idx for idx, label in enumerate(self.descriptor.soap_block.samples.values.numpy()) if label[2] == atom_type] for atom_type in self.descriptor.centers]
+        if soap_block.shape[0] == 1:
+            self.atomsel_element = [[0] for atom_type in self.descriptor.centers]
         buffer = np.zeros((first_soap.shape[0], self.interval, first_soap.shape[1]))
         cov_t = np.zeros((len(self.atomsel_element), first_soap.shape[1], first_soap.shape[1],))
         cov_intra_t = np.zeros((len(self.atomsel_element), first_soap.shape[1], first_soap.shape[1],))
@@ -421,7 +426,7 @@ class SpatialPCA(FullMethodBase):
         ntimesteps = np.zeros(len(self.atomsel_element), dtype=int)
 
         for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Computing SOAPs"):
-            new_soap_values = self.descriptor.calculate([system]) 
+            new_soap_values = self.descriptor.calculate([system])
             avg_soap_values = self.spatial_average_with_nl([system], new_soap_values)
             if fidx >= self.interval:
                 roll_kernel = np.roll(kernel, fidx%self.interval)
@@ -462,7 +467,7 @@ class SpatialPCA(FullMethodBase):
             # add temporal covariance
             cov_mu_t[atom_type_idx] = scatter_mut[atom_type_idx]/ntimesteps[atom_type_idx] - np.einsum('i,j->ij', mean_mu_t[atom_type_idx], mean_mu_t[atom_type_idx])
 
-        #all_soap_values = eval_SOAP(systems, calculator, sel, atomsel) 
+        #all_soap_values = eval_SOAP(systems, calculator, sel, atomsel).values.numpy()
         #C_np = np.cov(all_soap_values, rowvar=False, bias=True)   # population covariance
         #print(np.allclose(C_np, avgcc[0], atol=1e-8))
 
@@ -546,9 +551,10 @@ class SpatialPCA(FullMethodBase):
         """
         systems = systems_to_torch(traj, dtype=torch.float64)
         soap_block = self.descriptor.calculate(systems[:1])
-        first_soap = soap_block   
-        self.atomsel_element = [[idx for idx, label in enumerate(soap_block.samples ) if label[2] == atom_type] for atom_type in self.descriptor.centers]
-
+        first_soap =  soap_block  
+        self.atomsel_element = [[idx for idx, label in enumerate(self.descriptor.soap_block.samples.values.numpy()) if label[2] == atom_type] for atom_type in self.descriptor.centers]
+        if soap_block.shape[0] == 1:
+            self.atomsel_element = [[0] for atom_type in self.descriptor.centers]
         #initialize neighbor list for spatial avg
         self.make_neighborlist(self.spatial_cutoff)
 
@@ -564,7 +570,7 @@ class SpatialPCA(FullMethodBase):
         ntimesteps = np.zeros(len(self.atomsel_element), dtype=int)
         logger = np.zeros((len(self.atomsel_element), len(systems), first_soap.shape[1],))
         for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Computing SOAPs"):
-            new_soap_values = self.descriptor.calculate([system]) 
+            new_soap_values = self.descriptor.calculate([system])
             avg_soap_values = self.spatial_average_with_nl(system, new_soap_values)
             if fidx >= self.interval:
                 roll_kernel = np.roll(kernel, fidx%self.interval)
@@ -601,7 +607,7 @@ class SpatialPCA(FullMethodBase):
             # add temporal covariance
             cov_mu_t[atom_type_idx] = scatter_mut[atom_type_idx]/ntimesteps[atom_type_idx] - np.einsum('i,j->ij', mean_mu_t[atom_type_idx], mean_mu_t[atom_type_idx])
 
-        #all_soap_values = eval_SOAP(systems, calculator, sel, atomsel) 
+        #all_soap_values = eval_SOAP(systems, calculator, sel, atomsel).values.numpy()
         #C_np = np.cov(all_soap_values, rowvar=False, bias=True)   # population covariance
         #print(np.allclose(C_np, avgcc[0], atol=1e-8))
 
@@ -663,7 +669,7 @@ class SpatialPCA(FullMethodBase):
                 names=["atom"],
                 values=torch.tensor(j_neighbors, dtype=torch.int64).unsqueeze(-1),
             )
-            feats = self.descriptor_spatial.calculate([system], sel_samples) 
+            feats = self.descriptor_spatial.calculate([system], sel_samples)
             weighted_sum = (w[:, None] * feats).sum(axis=0)
             h_i = (weighted_sum + self_weight * features[idx]) / (self_weight + w.sum())
             averaged_features[idx] = h_i
@@ -688,7 +694,7 @@ class SpatialPCA(FullMethodBase):
 
             w = np.exp(-d**2 / (2*self.sigma**2))
             self.descriptor_spatial.set_samples(j)
-            feats = self.descriptor_spatial.calculate([system]) 
+            feats = self.descriptor_spatial.calculate([system])
             weighted_sum = (w[:, None] * feats).sum(axis=0)
             h_i = (weighted_sum + self_weight * features[i]) / (self_weight + w.sum())
             averaged_features[i] = h_i
@@ -781,9 +787,10 @@ class SpatialTempPCA(FullMethodBase):
         """
         systems = systems_to_torch(traj, dtype=torch.float64)
         soap_block = self.descriptor.calculate(systems[:1])
-        first_soap = soap_block   
-        self.atomsel_element = [[idx for idx, label in enumerate(soap_block.samples ) if label[2] == atom_type] for atom_type in self.descriptor.centers]
-
+        first_soap =  soap_block  
+        self.atomsel_element = [[idx for idx, label in enumerate(self.descriptor.soap_block.samples.values.numpy()) if label[2] == atom_type] for atom_type in self.descriptor.centers]
+        if soap_block.shape[0] == 1:
+            self.atomsel_element = [[0] for atom_type in self.descriptor.centers]
         #initialize neighbor list for spatial avg
         self.make_neighborlist(self.spatial_cutoff)
 
@@ -799,7 +806,7 @@ class SpatialTempPCA(FullMethodBase):
         ntimesteps = np.zeros(len(self.atomsel_element), dtype=int)
         logger = np.zeros((len(self.atomsel_element), len(systems), first_soap.shape[1],))
         for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Computing SOAPs"):
-            new_soap_values = self.descriptor.calculate([system]) 
+            new_soap_values = self.descriptor.calculate([system])
             avg_soap_values = self.spatial_average_with_nl(system, new_soap_values)
             if fidx >= self.interval:
                 roll_kernel = np.roll(kernel, fidx%self.interval)
@@ -836,7 +843,7 @@ class SpatialTempPCA(FullMethodBase):
             # add temporal covariance
             cov_mu_t[atom_type_idx] = scatter_mut[atom_type_idx]/ntimesteps[atom_type_idx] - np.einsum('i,j->ij', mean_mu_t[atom_type_idx], mean_mu_t[atom_type_idx])
 
-        #all_soap_values = eval_SOAP(systems, calculator, sel, atomsel) 
+        #all_soap_values = eval_SOAP(systems, calculator, sel, atomsel).values.numpy()
         #C_np = np.cov(all_soap_values, rowvar=False, bias=True)   # population covariance
         #print(np.allclose(C_np, avgcc[0], atol=1e-8))
 
@@ -885,7 +892,7 @@ class SpatialTempPCA(FullMethodBase):
                 names=["atom"],
                 values=torch.tensor(j_neighbors, dtype=torch.int64).unsqueeze(-1),
             )
-            feats = self.descriptor_spatial.calculate([system], sel_samples) 
+            feats = self.descriptor_spatial.calculate([system], sel_samples)
             weighted_sum = (w[:, None] * feats).sum(axis=0)
             h_i = (weighted_sum + self_weight * features[idx]) / (self_weight + w.sum())
             averaged_features[idx] = h_i
@@ -936,7 +943,7 @@ class SpatialTempPCA(FullMethodBase):
                 names=["atom"],
                 values=torch.tensor(j_neighbors, dtype=torch.int64).unsqueeze(-1),
             )
-            feats = self.descriptor_spatial.calculate([system], sel_samples) 
+            feats = self.descriptor_spatial.calculate([system], sel_samples)
             weighted_sum = (w[:, None] * feats).sum(axis=0)
             h_i = (weighted_sum + self_weight * features[idx]) / (self_weight + w.sum())
             averaged_features[idx] = h_i
@@ -959,7 +966,7 @@ class SpatialTempPCA(FullMethodBase):
 
             w = np.exp(-d**2 / (2*self.sigma**2))
             self.descriptor_spatial.set_samples(j)
-            feats = self.descriptor_spatial.calculate([system]) 
+            feats = self.descriptor_spatial.calculate([system])
             weighted_sum = (w[:, None] * feats).sum(axis=0)
             h_i = (weighted_sum + self_weight * features[i]) / (self_weight + w.sum())
             averaged_features[i] = h_i

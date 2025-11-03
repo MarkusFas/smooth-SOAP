@@ -128,7 +128,7 @@ class FullMethodBase(ABC):
         for trafo in self.transformations:
             projected = []
             for system in systems:
-                descriptor = self.descriptor.calculate([system]).values.numpy()
+                descriptor = self.descriptor.calculate([system])
                 descriptor_proj = trafo.project(descriptor)
                 projected.append(descriptor_proj)
                 # TODO:
@@ -147,7 +147,7 @@ class FullMethodBase(ABC):
         for trafo in self.transformations:
             projected = []
             for system in systems:
-                descriptor = self.descriptor.calculate([system]).values.numpy()
+                descriptor = self.descriptor.calculate([system])
                 ridge_pred = self.ridge.predict(descriptor)
                 projected.append(ridge_pred)
                
@@ -173,7 +173,7 @@ class FullMethodBase(ABC):
             w = np.exp(-d**2 / (2*sigma**2))
             self.descriptor_spatial.set_samples(self, selected_atoms)
             feats = np.stack([
-                features[selected_atoms[jj]] if jj in selected_atoms else self.descriptor.calculate([system]).values.numpy()
+                features[selected_atoms[jj]] if jj in selected_atoms else self.descriptor.calculate([system])
                 for jj in j
             ])
 

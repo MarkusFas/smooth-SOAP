@@ -39,7 +39,7 @@ def run_simulation(trj, methods_intervals, **kwargs):
                     test_atoms = selected_atoms[:N_test]
                 else:
                     test_atoms = selected_atoms[10+N_train: 10+N_train + N_test]
-                    test_atoms = selected_atoms[:N_test] # single atom case
+                    test_atoms = selected_atoms[-N_test:] # single atom case
             else:
                 test_atoms = N_test
         
