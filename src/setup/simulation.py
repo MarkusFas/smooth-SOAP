@@ -9,7 +9,6 @@ import chemiscope
 from src.plots.cov_heatmap import plot_heatmap
 from src.plots.timeseries import plot_projection_atoms, plot_projection_atoms_models
 from src.plots.histograms import plot_2pca
-from src.models.model_soap import SOAP_CV
 
 def run_simulation(trj, methods_intervals, **kwargs):
     

@@ -5,7 +5,7 @@ from itertools import chain
 import warnings
 from src.methods import PCA, IVAC, TICA, TempPCA, PCAfull, PCAtest, LDA, SpatialPCA
 #from src.descriptors.SOAP import SOAP_descriptor
-from  src.models.model_soap import SOAP_CV as SOAP_descriptor
+from  src.descriptors.model_soap import SOAP_CV as SOAP_descriptor
 
 from src.setup.simulation import run_simulation
 from src.setup.simulation_test import run_simulation_test
