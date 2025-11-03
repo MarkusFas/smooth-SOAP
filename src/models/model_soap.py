@@ -19,7 +19,7 @@ from metatomic.torch import (
 from featomic.torch import SoapPowerSpectrum
 
 class SOAP_CV(torch.nn.Module):
-    def __init__(self, trj, cutoff, max_angular, max_radial, centers, neighbors, pca_matrix):
+    def __init__(self, trj, cutoff, max_angular, max_radial, centers, neighbors, projection_matrix=None):
         super().__init__()
 
 #        self.neighbor_type_pairs = Labels(
@@ -74,7 +74,7 @@ class SOAP_CV(torch.nn.Module):
         self.id = f"SOAP_{cutoff}{max_angular}{max_radial}_{centers}"
         
         #pca_matrix=torch.load( 'water_ridge_matrix_434.pt')#.float()
-#        print(pca_matrix.dtype)
+        #print(pca_matrix.dtype)
 #        if pca_matrix==None:
 #            #print(trj)
 #            systems = systems_to_torch(trj[0], dtype=torch.float64)
@@ -84,8 +84,38 @@ class SOAP_CV(torch.nn.Module):
 #            #print('soap',soap, soap.block(0), soap.block(0).values)
 #            pca_matrix=torch.eye(soap.block(0).values.shape[1])
 #            print('Using eye matrix as pca matrix',pca_matrix.shape)
+        if projection_matrix !=None:
+            self.register_buffer("projection_matrix", torch.tensor(trans_matrix.copy()).T)#[0].T)
+        else:
+            self.projection_matrix=None
+#            systems = systems_to_torch(trj[0], dtype=torch.float64)
+#            self.set_samples([])
+#            soap = self.calculate(
+#                systems
+#            )#.values.numpy()
+#            #print('soap',soap, soap.block(0), soap.block(0).values)
+##            pca_matrix=torch.eye(soap.block(0).values.shape[1])
+#            print('Using eye matrix as pca matrix',pca_matrix.shape)
+#            self.trans_matrix=np.eye(soap.values.shape[1])
+    
+    def set_samples(self, selected_atoms):
+        self.selected_samples = Labels(
+            names=["atom"],
+            values=torch.tensor(selected_atoms, dtype=torch.int64).unsqueeze(-1),
+        )
 
-        self.register_buffer("pca_projection", torch.tensor(pca_matrix.copy()).T)#[0].T)
+    def calculate(self, systems):#, selected_samples=self.selected_atoms, selected_keys=self.selected_keys ):
+        
+        soap = self.calculator(
+            systems,
+            selected_samples=self.selected_samples,
+            selected_keys=self.selected_keys,
+        )
+        
+        soap = soap.keys_to_samples("center_type")
+        soap = soap.keys_to_properties(["neighbor_1_type", "neighbor_2_type"])
+        soap_block = soap.block()
+        return soap_block #TODO: return numpy
 
     def forward(
         self,
@@ -104,12 +134,16 @@ class SOAP_CV(torch.nn.Module):
             projected = torch.zeros((0,1), dtype=torch.float64)
             samples = Labels(["system", "atom"], torch.zeros((0, 2), dtype=torch.int32))
         else:
+            print(selected_atoms)
             soap = self.calculator(systems, selected_samples=selected_atoms, selected_keys=self.selected_keys)
             soap = soap.keys_to_samples("center_type")
             soap = soap.keys_to_properties(["neighbor_1_type", "neighbor_2_type"])#self.neighbor_type_pairs)
+            #if len(selected_atoms)>0:
+            #    self.selected_samples=selected_atoms
+            #soap_block=self.calculate(systems)#, selected_samples=selected_atoms, selected_keys=self.selected_keys)
 
             soap_block = soap.block()
-            projected = soap_block.values @ self.pca_projection
+            projected = soap_block.values @ self.projection_matrix
             projected=projected[:,0].unsqueeze(1)
 
             samples = soap_block.samples.remove("center_type")
@@ -127,6 +161,8 @@ class SOAP_CV(torch.nn.Module):
         )
         return {"features": cv}#, "soaps": soap }
 
+    def set_projection_matrix(self,matrix):
+        self.projection_matrix=torch.tensor(matrix.copy())
 
 #cv = SOAP_CV(species=[8, 1])
 #cv.eval()

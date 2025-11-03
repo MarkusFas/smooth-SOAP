@@ -4,7 +4,9 @@ from ase.io.trajectory import Trajectory
 from itertools import chain
 import warnings
 from src.methods import PCA, IVAC, TICA, TempPCA, PCAfull, PCAtest, LDA, SpatialPCA
-from src.descriptors.SOAP import SOAP_descriptor
+#from src.descriptors.SOAP import SOAP_descriptor
+from  src.models.model_soap import SOAP_CV as SOAP_descriptor
+
 from src.setup.simulation import run_simulation
 from src.setup.simulation_test import run_simulation_test
 from src.setup.read_data import read_trj
@@ -140,7 +142,8 @@ def setup_simulation(**kwargs):
         SOAP_max_radial = SOAP_kwargs.get('max_radial')
         descriptor_id = f"{SOAP_cutoff}{SOAP_max_angular}{SOAP_max_radial}"
         
-        descriptor = SOAP_descriptor(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors)
+        #descriptor = SOAP_descriptor( SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors)
+        descriptor = SOAP_descriptor(trajs, SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors)
     else:
         raise NotImplementedError(f"{descriptor} has not been implemented yet.")
     

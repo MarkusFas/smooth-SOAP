@@ -103,16 +103,19 @@ def run_simulation(trj, methods_intervals, **kwargs):
         for trans in method.transformations:
             #print(dir(method.descriptor), kwargs, method.root)#["SOAP_params"])
 
-            cv=SOAP_CV(trj,kwargs["SOAP_params"]["cutoff"],
-                       kwargs["SOAP_params"]["max_angular"],
-                       kwargs["SOAP_params"]["max_radial"],
-                       kwargs["SOAP_params"]["centers"],
-                       kwargs["SOAP_params"]["neighbors"],
-                       pca_matrix=trans.eigvals
-                       )
-            cv.eval()   
-            cv.save_model(path=method.root, name='model_soap')   
-            print(f'saved model at {method.root}')    
+#            cv=SOAP_CV(trj,kwargs["SOAP_params"]["cutoff"],
+#                       kwargs["SOAP_params"]["max_angular"],
+#                       kwargs["SOAP_params"]["max_radial"],
+#                       kwargs["SOAP_params"]["centers"],
+#                       kwargs["SOAP_params"]["neighbors"],
+#                       pca_matrix=trans.eigvals
+#                       )
+#            print('pca_matrix',method.descriptor.projection_matrix) 
+            method.descriptor.set_projection_matrix(trans.eigvecs)
+#            print('pca_matrix',method.descriptor.projection_matrix) 
+            method.descriptor.eval()   
+            method.descriptor.save_model(path=method.root+f'/interval_{method.interval}/', name='model_soap')   
+            print(f'saved model at {method.root}'+f'/interval_{method.interval}/')    
 
 if __name__ == '__main__':
     print('Nothing to do here')
