@@ -70,7 +70,10 @@ class LDA(FullMethodBase):
         self.cov1 = class_cov1
         self.cov2 = class_cov2
         N1 = len()
-        self.inclass = (class_cov1*traj_N[0] + class_cov2*traj_N[1]) / total_N
+        # arithmetic mean of covariances
+        #self.inclass = (class_cov1*traj_N[0] + class_cov2*traj_N[1]) / total_N
+        # harmonic mean of covariances
+        self.inclass = np.linalg.inv(np.linalg.inv(class_cov1) + np.linalg.inv(class_cov2))
         self.class_diff = (traj_means[0]*traj_N[0] - traj_means[1]*traj_N[1]) / total_N
         # Example: use PCA-based transformation for each center
         self.transformations = [PCA_obj(n_components=4, label=self.label) for n in range(cov1.shape[0])]
@@ -189,3 +192,14 @@ class LDA(FullMethodBase):
             header="\t".join(header),
             comments=""
         )
+
+        for i, trafo in enumerate(self.transformations):
+            torch.save(
+                torch.tensor(trafo.eigvals.copy()),
+                self.label + f"_center{self.descriptor.centers[i]}" + f"_eigvals.pt",
+            )
+
+            torch.save(
+                torch.tensor(trafo.eigvecs.copy()),
+                self.label + f"_center{self.descriptor.centers[i]}" + f"_eigvecs.pt",
+            )

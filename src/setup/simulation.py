@@ -33,13 +33,13 @@ def run_simulation(trj, methods_intervals, **kwargs):
             else:
                 train_atoms = N_train
             if isinstance(N_test , int):
-                selected_atoms = [idx for idx, number in enumerate(trj[0][0].get_atomic_numbers()) if number==method.descriptor.centers[0]]
                 if not is_shuffled:
+                    selected_atoms = [idx for idx, number in enumerate(trj[0][0].get_atomic_numbers()) if number==method.descriptor.centers[0]]
                     random.shuffle(selected_atoms)
                     test_atoms = selected_atoms[:N_test]
                 else:
                     test_atoms = selected_atoms[10+N_train: 10+N_train + N_test]
-                    test_atoms = selected_atoms[-N_test:] # single atom case
+                    test_atoms = selected_atoms[:N_test] # single atom case
             else:
                 test_atoms = N_test
         
@@ -79,9 +79,9 @@ def run_simulation(trj, methods_intervals, **kwargs):
             if "cs" in plots:
                 cs = chemiscope.show(trj[0],
                     properties={
-                        "PC[0]": {"target": "atoms", "values":X[0][...,0].flatten()},
-                        "PC[1]": X[0][...,1].flatten(),
-                        "time": np.arange(X[0].shape[0]),
+                        "PC[0]": {"target": "atom", "values": X[0][...,0].flatten()},
+                        "PC[1]": {"target": "atom", "values": X[0][...,1].flatten()},
+                        "time": {"target": "atom", "values": np.repeat(np.arange(X[0].shape[0]), X[0].shape[1])},
                     },
                     environments = [[i,j,4] for i in range(X[0].shape[0]) for j in test_atoms], # maybe range(X[0].shape[1])
                     settings=chemiscope.quick_settings(periodic=True, trajectory=True, target="atom", map_settings={"joinPoints": False})
