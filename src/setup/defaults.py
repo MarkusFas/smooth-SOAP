@@ -29,4 +29,5 @@ DEFAULT_PARAMS = {
     },
 
     "plots": ["projection"],
+    "save_model": False,
 }

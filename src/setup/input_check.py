@@ -148,7 +148,7 @@ def setup_simulation(**kwargs):
     kwargs = check_analysis_inputs(trajs, **kwargs)
     
     opt_methods = kwargs.get('methods')  # list of methods
-    implemented_opt = ['PCA', 'PCAfull', 'TICA', 'TEMPPCA', 'PCAtest', "LDA", "SpatialPCA"]
+    implemented_opt = ['PCA', 'PCAfull', 'TICA','IVAC', 'TEMPPCA', 'PCAtest', "LDA", "SpatialPCA"]
 
     system = kwargs["system"]
     version = kwargs["version"]
@@ -197,5 +197,7 @@ def setup_simulation(**kwargs):
 
     # TODO: check requested plots
     
+    save_model=kwargs["save_model"]
+
     # Pass nested lists to run_simulation
     run_simulation(trajs, methods_intervals, **kwargs)

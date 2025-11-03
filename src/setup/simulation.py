@@ -9,7 +9,7 @@ import chemiscope
 from src.plots.cov_heatmap import plot_heatmap
 from src.plots.timeseries import plot_projection_atoms, plot_projection_atoms_models
 from src.plots.histograms import plot_2pca
-
+from src.models.model_soap import SOAP_CV
 
 def run_simulation(trj, methods_intervals, **kwargs):
     
@@ -96,8 +96,23 @@ def run_simulation(trj, methods_intervals, **kwargs):
             plot_heatmap(cov1_int0[i], cov1_int1[i], method.root + f'_temporal_interval{interval_0[0].interval}{interval_1[0].interval}_center{center}' + f'_{i}')
             plot_heatmap(cov2_int0[i], cov2_int1[i], method.root + f'_spatial_interval{interval_0[0].interval}{interval_1[0].interval}_center{center}' + f'_{i}')
         print('Plotted heatmap')
-  
-    
+ 
+    if kwargs["save_model"]==True:
+#        print(dir(method.transformations[0]))
+#        print(method.transformations[0].run_label)
+        for trans in method.transformations:
+            #print(dir(method.descriptor), kwargs, method.root)#["SOAP_params"])
+
+            cv=SOAP_CV(trj,kwargs["SOAP_params"]["cutoff"],
+                       kwargs["SOAP_params"]["max_angular"],
+                       kwargs["SOAP_params"]["max_radial"],
+                       kwargs["SOAP_params"]["centers"],
+                       kwargs["SOAP_params"]["neighbors"],
+                       pca_matrix=trans.eigvals
+                       )
+            cv.eval()   
+            cv.save_model(path=method.root, name='model_soap')   
+            print(f'saved model at {method.root}')    
 
 if __name__ == '__main__':
     print('Nothing to do here')
