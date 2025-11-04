@@ -117,10 +117,23 @@ def run_simulation(trj, methods_intervals, **kwargs):
 #                       kwargs["SOAP_params"]["neighbors"],
 #                       pca_matrix=trans.eigvals
 #                       )
-#            print('pca_matrix',method.descriptor.projection_matrix) 
+#            print('pca_matrix',method.descriptor.projection_matrix)
+            #print('method.descriptor',dir(method.descriptor))
+            #print('method.descriptor',dir(trans))
+#            print('eivecs', trans.eigvecs[:2]) 
             method.descriptor.set_projection_matrix(trans.eigvecs)
             method.descriptor.set_projection_dims(dims=kwargs['model_proj_dims'])
-#            print('pca_matrix',method.descriptor.projection_matrix) 
+            method.descriptor.set_projection_mu(mu=trans.mu)
+#
+#
+#            from metatomic.torch import systems_to_torch
+#            import torch
+#            systems = systems_to_torch(trj[0][:2])
+#            testdescript=method.descriptor.calculate([systems[0]]) 
+#            print(testdescript.shape, trans.mu.shape, trans.eigvecs[:,:3].shape)
+#            proj=torch.einsum('ij,jk->ik', (torch.tensor(testdescript)-torch.tensor(trans.mu)),torch.tensor(trans.eigvecs[:,:3].copy()))
+#            print(proj, proj.shape)
+##            print('pca_matrix',method.descriptor.projection_matrix) 
             method.descriptor.eval()   
             method.descriptor.save_model(path=method.root+f'/interval_{method.interval}/', name='model_soap')   
             print(f'saved model at {method.root}'+f'/interval_{method.interval}/')    

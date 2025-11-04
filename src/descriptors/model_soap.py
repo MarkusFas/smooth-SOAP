@@ -52,15 +52,6 @@ class SOAP_CV(torch.nn.Module):
             self.register_buffer("projection_matrix", torch.tensor(trans_matrix.copy()).T)#[0].T)
         else:
             self.projection_matrix=None
-    
-    def set_samples(self, selected_atoms):
-        self.selected_samples = Labels(
-            names=["atom"],
-            values=torch.tensor(selected_atoms, dtype=torch.int64).unsqueeze(-1),
-        )
-
-    def set_projection_dims(self, dims):
-        self.proj_dims = dims
 
     def calculate(self, systems):
         
@@ -97,8 +88,7 @@ class SOAP_CV(torch.nn.Module):
             soap = soap.keys_to_properties(["neighbor_1_type", "neighbor_2_type"])#self.neighbor_type_pairs)
 
             soap_block = soap.block()
-            projected = soap_block.values @ self.projection_matrix[self.proj_dims].T
-            projected=projected #.unsqueeze(1)
+            projected = torch.einsum('ij,jk->ik',(soap_block.values - self.mu), self.projection_matrix[:,self.proj_dims])#, dtype=torch.float64)
 
             samples = soap_block.samples.remove("center_type")
 
@@ -108,7 +98,6 @@ class SOAP_CV(torch.nn.Module):
             components=[],
             #properties=Labels("soap_pca", torch.tensor([[0]])),
             #properties=Labels("soap_pca", torch.tensor([[0], [1]])),
-            #properties=Labels("soap_pca", torch.tensor([[0], [1], [3]]).T),
             properties=Labels("soap_pca", torch.tensor(self.proj_dims, dtype=torch.int).unsqueeze(-1)),
         )
         cv = TensorMap(
@@ -116,6 +105,18 @@ class SOAP_CV(torch.nn.Module):
             blocks=[block],
         )
         return {"features": cv}#, "soaps": soap }
+    
+    def set_samples(self, selected_atoms):
+        self.selected_samples = Labels(
+            names=["atom"],
+            values=torch.tensor(selected_atoms, dtype=torch.int64).unsqueeze(-1),
+        )
+
+    def set_projection_dims(self, dims):
+        self.proj_dims = dims
+
+    def set_projection_mu(self, mu):
+        self.mu = torch.tensor(mu, dtype=torch.float64)
 
     def set_projection_matrix(self,matrix):
         self.projection_matrix=torch.tensor(matrix.copy())
