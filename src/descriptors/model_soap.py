@@ -59,6 +59,12 @@ class SOAP_CV(torch.nn.Module):
             values=torch.tensor(selected_atoms, dtype=torch.int64).unsqueeze(-1),
         )
 
+    def set_projection_dims(self, dims):
+        self.proj_dims = dims
+        print('dims',dims)
+        print('pdims',self.projection_matrix)
+        print('adims',self.projection_matrix[dims])
+
     def calculate(self, systems):
         
         soap = self.calculator(
@@ -94,7 +100,7 @@ class SOAP_CV(torch.nn.Module):
             soap = soap.keys_to_properties(["neighbor_1_type", "neighbor_2_type"])#self.neighbor_type_pairs)
 
             soap_block = soap.block()
-            projected = soap_block.values @ self.projection_matrix
+            projected = soap_block.values @ self.projection_matrix[self.proj_dims]
             projected=projected[:,0].unsqueeze(1)
 
             samples = soap_block.samples.remove("center_type")

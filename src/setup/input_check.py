@@ -102,6 +102,12 @@ def check_analysis_inputs(trajs, **kwargs):
             kwargs['methods'] = [kwargs['methods']]
     return kwargs
 
+    if not isinstance(kwargs['model_proj_dims'], list):
+        if not isinstance(kwargs['model_proj_dims'], int):
+            raise TypeError("test_selected_atoms must be integer or list of integers")
+    else:
+        if not all(isinstance(x, int) for x in kwargs['model_proj_dims']):
+            raise TypeError("All elements of test_selected_atoms must be integers")
 
 def check_SOAP_inputs(trajs, **kwargs):
     required = ["centers", "neighbors", "cutoff", "max_angular", "max_radial"]
@@ -224,7 +230,8 @@ def setup_simulation(**kwargs):
 
     # TODO: check requested plots
     
-    save_model=kwargs["save_model"]
+    model_save=kwargs["model_save"]
+    print(kwargs["model_proj_dims"])
 
     # Pass nested lists to run_simulation
     run_simulation(trajs, methods_intervals, **kwargs)

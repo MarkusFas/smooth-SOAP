@@ -104,7 +104,7 @@ def run_simulation(trj, methods_intervals, **kwargs):
             plot_heatmap(cov2_int0[i], cov2_int1[i], method.root + f'_spatial_interval{interval_0[0].interval}{interval_1[0].interval}_center{center}' + f'_{i}')
         print('Plotted heatmap')
  
-    if kwargs["save_model"]==True:
+    if kwargs["model_save"]==True:
 #        print(dir(method.transformations[0]))
 #        print(method.transformations[0].run_label)
         for trans in method.transformations:
@@ -119,6 +119,7 @@ def run_simulation(trj, methods_intervals, **kwargs):
 #                       )
 #            print('pca_matrix',method.descriptor.projection_matrix) 
             method.descriptor.set_projection_matrix(trans.eigvecs)
+            method.descriptor.set_projection_dims(dims=kwargs['model_proj_dims'])
 #            print('pca_matrix',method.descriptor.projection_matrix) 
             method.descriptor.eval()   
             method.descriptor.save_model(path=method.root+f'/interval_{method.interval}/', name='model_soap')   
