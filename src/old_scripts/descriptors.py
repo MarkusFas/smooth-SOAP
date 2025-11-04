@@ -221,7 +221,9 @@ def SOAP_full(traj, interval, ids_atoms, HYPER_PARAMETERS, centers, neighbors, s
     inframe = np.zeros((len(atomsel_element), len(systems), first_soap.shape[0], first_soap.shape[1]))
     delta=np.zeros(maxlag)
     delta[maxlag//2]=1
-    kernel=gaussian_filter(delta,sigma=(maxlag-1)//(2*3)) # cutoff at 3 sigma, leaves 0.1%
+    kernel=gaussian_filter(delta,sigma=(maxlag-1)//(2)) #gaussian_filter(delta,sigma=(maxlag-1)//(2*3)) # cutoff at 3 sigma, leaves 0.1%
+    kernel=np.ones(kernel.shape)
+    kernel /= np.sum(kernel)
     ntimesteps = np.zeros(len(atomsel_element), dtype=int)
     
     for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Computing SOAPs"):

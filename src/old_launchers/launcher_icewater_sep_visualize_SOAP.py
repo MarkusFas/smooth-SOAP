@@ -7,15 +7,14 @@ from src.visualize import plot_compare_atoms, plot_compare_timeave, plot_compare
 
 import numpy as np
 from tqdm import tqdm
-import chemiscope
+
 from pathlib import Path
 import os
 import random
-
+data1 = '/Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/ice_water_separate_trj/first10.lammpstrj'
+data2 = '/Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/ice_water_separate_trj/last10.lammpstrj'
 
 data1 = '/Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/icemeltinterface/TIP4P/positions.extxyz'
-data1 = '/Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/interfaces/250_275/positions.lammpstrj'
-#data1 = '/Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/interfaces/250/positions.lammpstrj'
 SOAP_cutoff = 5
 SOAP_max_angular = 6
 SOAP_max_radial = 5
@@ -43,12 +42,12 @@ HYPER_PARAMETERS = {
 if __name__=='__main__':
     trj1 = read_trj(data1, '::5')
     #trj = trj1[:1000] + trj1[-1000:]
-    trj = trj1[:]
+    trj = trj1
     #trj = tamper_water_trj(trj)
     #trj = trj[:2]
 
     print('done loading the structures')
-    dir = f'results/icewaterinterfacemelt_lf/250_275/test/visual_constantavg_stride/CUTOFF/SOAP_deeptime_single'
+    dir = f'results/interface_melts/visual_constantavg_stride/CUTOFF/SOAP_deeptime_single'
     Path(dir).mkdir(parents=True, exist_ok=True)
     
     label = f'SOAP_r{SOAP_cutoff}_maxang{SOAP_max_angular}_maxrad{SOAP_max_radial}'
@@ -57,9 +56,9 @@ if __name__=='__main__':
     ids_atoms_train = [atom.index for atom in trj[0] if atom.number == centers[0]]
     random.seed(7)
     random.shuffle(ids_atoms_train)
-    ids_atoms_train = ids_atoms_train[:30]
+    ids_atoms_train = ids_atoms_train[:20]
 
-    test_intervals = [1, 1000]
+    test_intervals = [1]
     X_values = []
     #for interval in test_intervals:
     interval =1 
@@ -69,26 +68,7 @@ if __name__=='__main__':
         X, properties = SOAP_full(trj, interval, ids_atoms_train, HYPER_PARAMETERS, centers, neighbors, sigma)
         X_values.append(X[0]) # first center type TxNxD
 
-    SOAP_idx = 10
-    for SOAP_idx in range(12):
-        for i, SOAPS in enumerate(X_values):
-            SOAP_placeholder = np.zeros((SOAPS.shape[0], len(trj[0]), 1))
-
-            SOAP_placeholder[:,ids_atoms_train,0] = SOAPS[...,SOAP_idx]
-            fname = dir + f'/SOAP_interval{test_intervals[i]}_sigma{test_sigmas[0]}_SOAP_{SOAP_idx}'
-            cs = chemiscope.show(trj,
-                properties={
-                    "SOAP": {"target": "atom", "values": SOAPS[...,SOAP_idx].flatten()},
-                    #"time": np.arange(SOAPS.shape[0]),
-                    "time": {"target": "atom", "values":np.repeat(np.arange(SOAPS.shape[0]), SOAPS.shape[1])},
-                },
-                environments = [[i,j,4] for i in range(SOAPS.shape[0]) for j in ids_atoms_train], # maybe range(X[0].shape[1])
-                settings=chemiscope.quick_settings(periodic=True, trajectory=True, target="atom", map_settings={"joinPoints": False})
-            )
-            cs.save(fname + '_cs.json')
-    print("saved chemiscope")
-    exit()
-    for i in np.arange(X_values[0].shape[-1]//20)[:5]:
+    for i in range(X_values[0].shape[-1]//20):
         SOAP_idx = np.arange(i*20, (i+1)*20, 1)
         #SOAP_idx = np.random.randint(0, X_values[0].shape[-1]//5, 25)
 

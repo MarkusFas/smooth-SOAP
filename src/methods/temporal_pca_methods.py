@@ -49,9 +49,10 @@ class TempPCA(FullMethodBase):
         """
         systems = systems_to_torch(traj, dtype=torch.float64)
         soap_block = self.descriptor.calculate(systems[:1])
-        first_soap = soap_block.values.numpy()  
-        self.atomsel_element = [[idx for idx, label in enumerate(soap_block.samples.values.numpy()) if label[2] == atom_type] for atom_type in self.descriptor.centers]
-    
+        first_soap = soap_block
+        self.atomsel_element = [[idx for idx, label in enumerate(self.descriptor.soap_block.samples.values.numpy()) if label[2] == atom_type] for atom_type in self.descriptor.centers]
+        if soap_block.shape[0] == 1:
+            self.atomsel_element = [[0] for atom_type in self.descriptor.centers]   
         buffer = np.zeros((first_soap.shape[0], self.interval, first_soap.shape[1]))
         cov_t = np.zeros((len(self.atomsel_element), first_soap.shape[1], first_soap.shape[1],))
         sum_mu_t = np.zeros((len(self.atomsel_element),first_soap.shape[1],))
@@ -63,7 +64,7 @@ class TempPCA(FullMethodBase):
         ntimesteps = np.zeros(len(self.atomsel_element), dtype=int)
 
         for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Computing SOAPs"):
-            new_soap_values = self.descriptor.calculate([system]).values.numpy()
+            new_soap_values = self.descriptor.calculate([system])
             if fidx >= self.interval:
                 roll_kernel = np.roll(kernel, fidx%self.interval)
                 # computes a contribution to the correlation function
@@ -133,3 +134,14 @@ class TempPCA(FullMethodBase):
             header="\t".join(header),
             comments=""
         )
+
+        for i, trafo in enumerate(self.transformations):
+            torch.save(
+                torch.tensor(trafo.eigvals.copy()),
+                self.label + f"_center{self.descriptor.centers[i]}" + f"_eigvals.pt",
+            )
+
+            torch.save(
+                torch.tensor(trafo.eigvecs.copy()),
+                self.label + f"_center{self.descriptor.centers[i]}" + f"_eigvecs.pt",
+            ) 

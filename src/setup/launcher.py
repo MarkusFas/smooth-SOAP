@@ -59,7 +59,7 @@ if __name__ == "__main__":
 #        plot_compare_atoms(X_values, SOAP_idx, label_used, properties.values.numpy(), test_intervals)
 
     exit()
-    input_file = 'systems/cycloAE/test_interval1.yaml'
+    input_file = 'systems/cycloAE/test_interval_hf1.yaml'
     user_cfg = load_config(input_file)
     params = merge_params(DEFAULT_PARAMS, user_cfg, input_file)
     setup_simulation(**params)

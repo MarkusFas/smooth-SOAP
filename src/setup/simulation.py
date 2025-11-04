@@ -26,15 +26,15 @@ def run_simulation(trj, methods_intervals, **kwargs):
             is_shuffled = False
             if isinstance(N_train , int):
                 selected_atoms = [idx for idx, number in enumerate(trj[0][0].get_atomic_numbers()) if number==method.descriptor.centers[0]]
-                #random.shuffle(selected_atoms) 
-                train_atoms = selected_atoms[-N_train:]
+                random.shuffle(selected_atoms) 
+                train_atoms = selected_atoms[:N_train]
                 is_shuffled = True
             else:
                 train_atoms = N_train
             if isinstance(N_test , int):
-                selected_atoms = [idx for idx, number in enumerate(trj[0][0].get_atomic_numbers()) if number==method.descriptor.centers[0]]
                 if not is_shuffled:
-                    #random.shuffle(selected_atoms)
+                    selected_atoms = [idx for idx, number in enumerate(trj[0][0].get_atomic_numbers()) if number==method.descriptor.centers[0]]
+                    random.shuffle(selected_atoms)
                     test_atoms = selected_atoms[:N_test]
                 else:
                     print('test from shuffled')
@@ -58,19 +58,23 @@ def run_simulation(trj, methods_intervals, **kwargs):
 
             trj_predict = list(chain(*trj))
             X = method.predict(trj_predict, test_atoms) ##centers T,N,P
+            X_ridge = method.predict_ridge(trj_predict, test_atoms)
             X = [proj.transpose(1,0,2) for proj in X]
-            
+            X_ridge = [proj.transpose(1,0,2) for proj in X_ridge]
             #4 Post processing
             plots = kwargs.get("plots", [])
 
             if "projection" in plots:
                 plot_projection_atoms(X, [0,1,2,3], method.label, [method.interval]) # need to transpose to T,N,P
+                plot_projection_atoms(X_ridge, [0,1,2,3], method.label + '_ridge', [method.interval]) # need to transpose to T,N,P
                 #plot_projection_atoms_models(X, [0,1,2,3], label, [method.interval])
                 print('Plotted projected timeseries for test atoms')
 
             if "pca" in plots:
                 for i, proj in enumerate(X):
                     plot_2pca(proj, method.label + f'_{i}')
+                for i, proj in enumerate(X_ridge):
+                    plot_2pca(proj, method.label + f'_ridge_{i}')
                 print('Plotted scatterplot of PCA')
 
             print('Plots saved at ' + method.label)
@@ -78,9 +82,9 @@ def run_simulation(trj, methods_intervals, **kwargs):
             if "cs" in plots:
                 cs = chemiscope.show(trj[0],
                     properties={
-                        "PC[0]": {"target": "atoms", "values":X[0][...,0].flatten()},
-                        "PC[1]": X[0][...,1].flatten(),
-                        "time": np.arange(X[0].shape[0]),
+                        "PC[0]": {"target": "atom", "values": X[0][...,0].flatten()},
+                        "PC[1]": {"target": "atom", "values": X[0][...,1].flatten()},
+                        "time": {"target": "atom", "values": np.repeat(np.arange(X[0].shape[0]), X[0].shape[1])},
                     },
                     environments = [[i,j,4] for i in range(X[0].shape[0]) for j in test_atoms], # maybe range(X[0].shape[1])
                     settings=chemiscope.quick_settings(periodic=True, trajectory=True, target="atom", map_settings={"joinPoints": False})

@@ -14,7 +14,7 @@ import ase.neighborlist
 from vesin import ase_neighbor_list
 from memory_profiler import profile
 from pathlib import Path
-
+from sklearn.linear_model import Ridge 
 from src.transformations.PCAtransform import PCA_obj
 
 
@@ -124,15 +124,129 @@ class FullMethodBase(ABC):
         systems = systems_to_torch(traj, dtype=torch.float64)
        
         projected_per_type = []
+        self.ridge = Ridge(alpha=1e-6)
         for trafo in self.transformations:
             projected = []
             for system in systems:
-                descriptor = self.descriptor.calculate([system]).values.numpy()
-                projected.append(trafo.project(descriptor))
-
+                descriptor = self.descriptor.calculate([system])
+                descriptor_proj = trafo.project(descriptor)
+                projected.append(descriptor_proj)
+                # TODO:
+                self.ridge.fit(descriptor, descriptor_proj)
             projected_per_type.append(np.stack(projected, axis=0).transpose(1, 0, 2))
 
         return projected_per_type  # shape: (#centers ,N_atoms, T, latent_dim)
+
+    def predict_ridge(self, traj, selected_atoms):
+        self.selected_atoms = selected_atoms
+        self.descriptor.set_samples(selected_atoms)
+        systems = systems_to_torch(traj, dtype=torch.float64)
+       
+        projected_per_type = []
+
+        for trafo in self.transformations:
+            projected = []
+            for system in systems:
+                descriptor = self.descriptor.calculate([system])
+                ridge_pred = self.ridge.predict(descriptor)
+                projected.append(ridge_pred)
+               
+            projected_per_type.append(np.stack(projected, axis=0).transpose(1, 0, 2))
+
+        return projected_per_type
+        
+
+    def make_neighborlist(atoms, cutoff):
+        self.nlist = NeighborList(cutoff=cutoff, pbc=True)
+
+
+    def spatial_average_with_nl(selected_atoms, positions, features, compute_feature_fn, sigma):
+        self.nlist.update(positions)
+        averaged_features = {}
+        self_weight = 1.0
+        for i in selected_atoms:
+            j, d = self.nlist.get_neighbors(i, return_distances=True)
+            if len(j) == 0:
+                averaged_features[i] = features[i]
+                continue
+
+            w = np.exp(-d**2 / (2*sigma**2))
+            self.descriptor_spatial.set_samples(self, selected_atoms)
+            feats = np.stack([
+                features[selected_atoms[jj]] if jj in selected_atoms else self.descriptor.calculate([system])
+                for jj in j
+            ])
+
+            weighted_sum = (w[:, None] * feats).sum(axis=0)
+            h_i = (weighted_sum + self_weight * features[i]) / (self_weight + w.sum())
+            averaged_features[i] = h_i
+
+        return averaged_features
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    def spatial_averaging(self, system, features, sigma):
+        averaged_features = {}
+        selected_atoms = self.selected_atoms
+        points = system.positions #[self.selected_atoms]
+        calculator = NeighborList(cutoff=5.0, full_list=True)
+        i, j, S, d = calculator.compute(
+            points=points,
+            box=system.cell,
+            periodic=True,
+            quantities="ijSd"
+        )
+        i = i.astype(np.int64)
+        j = j.astype(np.int64)
+        d = d.astype(np.float64)
+
+        positions = system.positions
+        cutoff = 5.0
+        for i in selected_atoms:
+            # Find neighbors within cutoff
+            ri = positions[i]
+            dvec = positions - ri
+            dist = np.linalg.norm(dvec, axis=1)
+            mask = (dist < cutoff) & (dist > 0.0)
+            neighbors = np.where(mask)[0]
+
+            # Compute Gaussian weights
+            w = np.exp(-dist[neighbors]**2 / (2 * sigma**2))
+
+            # Collect neighbor features
+            neighbor_features = []
+            for j in neighbors:
+                if j in features:
+                    f_j = features[j]
+                else:
+                    f_j = compute_feature_fn(j)
+                    features[j] = f_j  # cache for later reuse
+                neighbor_features.append(f_j)
+
+            neighbor_features = np.array(neighbor_features)
+
+            # Compute weighted average
+            self_weight = 1.0
+            weighted_sum = (w[:, None] * neighbor_features).sum(axis=0)
+            h_i = (weighted_sum + self_weight * features[i]) / (self_weight + w.sum())
+
+            averaged_features[i] = h_i
+
+        return averaged_features
+
+
 
 
     def spatial_averaging(self, system, features, sigma):
@@ -152,6 +266,23 @@ class FullMethodBase(ABC):
         i = i.astype(np.int64)
         j = j.astype(np.int64)
         d = d.astype(np.float64)
+
+        """# TODO: check which of the atoms in the cutoff have already soaps
+        neighbors = {}
+        neighbor_soaps = []
+        for atom_idx in self.selected_atoms:
+            
+            sel_samples = Labels(
+                names=["atom"],
+                values=torch.tensor(j[i == atom_idx], dtype=torch.int64).unsqueeze(-1),
+            )
+       
+            for neigh_idx in j[i == atom_idx]:
+                if neigh_idx in self.selected_atoms: # as for those we already have a precomputed SOAP
+                    neighbor_soaps.append(features[np.where(self.selected_atoms == neigh_idx)[0][0]])
+                else:
+                    neighbor_soaps.append(self.descriptor.calculate([system], sel_samples)) #TODO"""
+        # compute for those without
         # get distance 
         w = np.exp(-d**2 / (2*sigma**2), dtype=np.float64)     # pairwise weights
         # add self-weight term separately later
@@ -168,7 +299,6 @@ class FullMethodBase(ABC):
         # return the averaged features 
         return h
         
-
 
     def full_spatial_averaging(self, system, features, sigma):
 
