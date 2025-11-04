@@ -61,9 +61,6 @@ class SOAP_CV(torch.nn.Module):
 
     def set_projection_dims(self, dims):
         self.proj_dims = dims
-        print('dims',dims)
-        print('pdims',self.projection_matrix)
-        print('adims',self.projection_matrix[dims])
 
     def calculate(self, systems):
         
@@ -100,8 +97,8 @@ class SOAP_CV(torch.nn.Module):
             soap = soap.keys_to_properties(["neighbor_1_type", "neighbor_2_type"])#self.neighbor_type_pairs)
 
             soap_block = soap.block()
-            projected = soap_block.values @ self.projection_matrix[self.proj_dims]
-            projected=projected[:,0].unsqueeze(1)
+            projected = soap_block.values @ self.projection_matrix[self.proj_dims].T
+            projected=projected #.unsqueeze(1)
 
             samples = soap_block.samples.remove("center_type")
 
@@ -109,8 +106,10 @@ class SOAP_CV(torch.nn.Module):
             values=projected,
             samples=samples,
             components=[],
-            properties=Labels("soap_pca", torch.tensor([[0]])),
+            #properties=Labels("soap_pca", torch.tensor([[0]])),
             #properties=Labels("soap_pca", torch.tensor([[0], [1]])),
+            #properties=Labels("soap_pca", torch.tensor([[0], [1], [3]]).T),
+            properties=Labels("soap_pca", torch.tensor(self.proj_dims, dtype=torch.int).unsqueeze(-1)),
         )
         cv = TensorMap(
             keys=Labels("_", torch.tensor([[0]])),

@@ -43,7 +43,7 @@ def run_simulation(trj, methods_intervals, **kwargs):
             else:
                 test_atoms = N_test
 
-            print('Ntrain, Ntest', N_train, N_test, is_shuffled)
+            print('Ntrain, Ntest: ', N_train, N_test)
             print('Train atoms: {}'.format(train_atoms))        
             print('Test atoms: {}'.format(test_atoms))        
 
