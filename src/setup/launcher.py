@@ -43,9 +43,6 @@ if __name__ == "__main__":
     params = merge_params(DEFAULT_PARAMS, user_cfg, input_file)
     setup_simulation(**params)
 
-    print(params)
-    print(params['interval'])
-
 #    #for interval in test_intervals:
 #    X, properties = SOAP_full(trj, params['interval'], params['train_selected_atoms'], params['SOAP_params'], centers, neighbors, sigma)
 #    X_values.append(X[0]) # first center type TxNxD

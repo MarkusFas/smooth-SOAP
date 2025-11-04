@@ -37,11 +37,15 @@ def run_simulation(trj, methods_intervals, **kwargs):
                     #random.shuffle(selected_atoms)
                     test_atoms = selected_atoms[:N_test]
                 else:
+                    print('test from shuffled')
                     test_atoms = selected_atoms[10+N_train: 10+N_train + N_test]
                     test_atoms = selected_atoms[-N_test:] # single atom case
             else:
                 test_atoms = N_test
-        
+
+            print('Ntrain, Ntest', N_train, N_test, is_shuffled)
+            print('Train atoms: {}'.format(train_atoms))        
+            print('Test atoms: {}'.format(test_atoms))        
 
             # train our method by specifying the selected atoms
             method.train(trj, train_atoms)
