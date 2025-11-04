@@ -30,4 +30,9 @@ DEFAULT_PARAMS = {
     },
 
     "plots": ["projection"],
+
+    "classify": {
+        "request": False,
+        "switch_index": None,
+    }
 }

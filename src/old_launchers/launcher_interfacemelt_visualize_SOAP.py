@@ -15,10 +15,11 @@ import random
 
 data1 = '/Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/icemeltinterface/TIP4P/positions.extxyz'
 data1 = '/Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/interfaces/250_275/positions.lammpstrj'
+data1 = '/Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/interfaces/250_275_fast/positions.lammpstrj'
 #data1 = '/Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/interfaces/250/positions.lammpstrj'
-SOAP_cutoff = 5
+SOAP_cutoff = 8
 SOAP_max_angular = 6
-SOAP_max_radial = 5
+SOAP_max_radial = 6
 
 centers = [8] # center on Te
 neighbors  = [1,8]
@@ -48,7 +49,7 @@ if __name__=='__main__':
     #trj = trj[:2]
 
     print('done loading the structures')
-    dir = f'results/icewaterinterfacemelt_lf/250_275/test/visual_constantavg_stride/CUTOFF/SOAP_deeptime_single'
+    dir = f'results/icewaterinterfacemeltfast_lf/250_275/test/visual_constantavg_stride/CUTOFF/SOAP_deeptime_single'
     Path(dir).mkdir(parents=True, exist_ok=True)
     
     label = f'SOAP_r{SOAP_cutoff}_maxang{SOAP_max_angular}_maxrad{SOAP_max_radial}'
@@ -59,7 +60,7 @@ if __name__=='__main__':
     random.shuffle(ids_atoms_train)
     ids_atoms_train = ids_atoms_train[:30]
 
-    test_intervals = [1, 1000]
+    test_intervals = [10, 100]
     X_values = []
     #for interval in test_intervals:
     interval =1 

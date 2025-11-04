@@ -6,6 +6,8 @@ import random
 
 def read_trj(file, index=':'):
     trj = ase.io.read(file, index=index)
+    for structure in trj:
+        structure.wrap()
     #fig, ax = plt.subplots()
     #plot_atoms(trj[0],
     #       ax=ax,

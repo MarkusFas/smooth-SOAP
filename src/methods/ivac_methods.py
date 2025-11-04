@@ -14,7 +14,7 @@ from memory_profiler import profile
 from src.transformations.PCAtransform import PCA_obj
 from src.methods.BaseMethod import FullMethodBase
 
-#TODO : add lag to self.label
+
 class TICA(FullMethodBase):
 
     def __init__(self, descriptor, interval, lag, sigma, root):
@@ -269,8 +269,9 @@ class TILDA(FullMethodBase):
             
             # covB
             covB[atom_type_idx] = corrA[atom_type_idx]/nsmp_corr[atom_type_idx] - np.einsum('i,j->ij', muA[atom_type_idx], muA[atom_type_idx])
-            
-        self.cov = covA + covB
+        
+        # harmonic mean of covariances
+        self.cov = np.array([np.linalg.inv(np.linalg.inv(0.5*(cov1 + cov1.T)) + np.linalg.inv(0.5*(cov2 + cov2.T))) for cov1, cov2 in zip(covA, covB)])
         self.corr = np.einsum('ij,ik->ijk', muA - muB, muA - muB)
         self.mu = 0.5 * (muA + muB)
         self.mu_corr = muA
@@ -286,8 +287,8 @@ class TILDA(FullMethodBase):
         -------
         empty
         """
-        metrics = np.array([self.mu[0], self.mu_corr[0], np.diag(self.cov[0]), np.diag(self.corr[0])])
-        header = ["mu", "mu_corr", "cov", "corr"]
+        metrics = np.array([self.mu[0], np.diag(self.corr[0]), np.diag(self.cov[0])])
+        header = ["mu", "corr", "cov"]
 
         # Make metrics a 2D row vector: shape (1, 2)
         np.savetxt(
@@ -299,7 +300,7 @@ class TILDA(FullMethodBase):
             comments=""
         )
 
-        for trafo in self.transformations:
+        for i, trafo in enumerate(self.transformations):
             torch.save(
                 torch.tensor(trafo.eigvals.copy()),
                 self.label + f"_center{self.descriptor.centers[i]}" + f"_eigvals.pt",
