@@ -126,7 +126,8 @@ class LDA(FullMethodBase):
         nsmp = np.zeros(len(self.atomsel_element))
         delta=np.zeros(self.interval)
         delta[self.interval//2]=1
-        kernel=gaussian_filter(delta,sigma=(self.interval-1)//(2*3)) # cutoff at 3 sigma, leaves 0.1%
+        kernel=gaussian_filter(delta,sigma=(self.interval-1)//(2)) # cutoff at 3 sigma, leaves 0.1%
+        kernel /= kernel.sum()
         ntimesteps = np.zeros(len(self.atomsel_element), dtype=int)
 
         for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Computing SOAPs"):

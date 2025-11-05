@@ -73,7 +73,8 @@ class FullMethodBase(ABC):
         #combine trajectories:
         total_N = np.sum(traj_N)
         self.mean = np.mean(traj_means, axis=0)
-        
+        #self.cov1 = np.mean(traj_cov1, axis=0)
+        #self.cov2 = np.mean(traj_cov2, axis=0)
         # Compute within-class covariance (average of per-trajectory covariances)
         class_cov1 = np.mean(traj_cov1, axis=0)
         class_cov2 = np.mean(traj_cov2, axis=0)
@@ -94,7 +95,7 @@ class FullMethodBase(ABC):
         self.cov2 = class_cov2 + between_cov2
 
         # Example: use PCA-based transformation for each center
-        self.transformations = [PCA_obj(n_components=4, label=self.label) for n in range(cov1.shape[0])]
+        self.transformations = [PCA_obj(n_components=4, label=self.label) for n in range(self.cov1.shape[0])]
 
         for i, trafo in enumerate(self.transformations):
             trafo.solve_GEV(self.mean[i], self.cov1[i], self.cov2[i])
@@ -122,7 +123,7 @@ class FullMethodBase(ABC):
         self.selected_atoms = selected_atoms
         self.descriptor.set_samples(selected_atoms)
         systems = systems_to_torch(traj, dtype=torch.float64)
-       
+
         projected_per_type = []
         self.ridge = Ridge(alpha=1e-6)
         for trafo in self.transformations:
@@ -136,7 +137,42 @@ class FullMethodBase(ABC):
             projected_per_type.append(np.stack(projected, axis=0).transpose(1, 0, 2))
 
         return projected_per_type  # shape: (#centers ,N_atoms, T, latent_dim)
+    """
+    def fit_ridge(self, traj, selected_atoms):
+        systems = systems_to_torch(traj, dtype=torch.float64)
+        soap_block = self.descriptor.calculate(systems[:1])
+        first_soap =  soap_block  
+        atomsel_element = [[idx for idx, label in enumerate(self.descriptor.soap_block.samples.values.numpy()) if label[2] == atom_type] for atom_type in self.descriptor.centers]
+        if soap_block.shape[0] == 1:
+            atomsel_element = [[0] for atom_type in self.descriptor.centers]
+        buffer = np.zeros((first_soap.shape[0], self.interval, first_soap.shape[1]))
+        
+        delta=np.zeros(self.interval)
+        delta[self.interval//2]=1
+        kernel=gaussian_filter(delta,sigma=(self.interval-1)//(2)) # cutoff at 3 sigma, leaves 0.1%
+        kernel /= kernel.sum() #kernel = delta
 
+        for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Computing SOAPs"):
+            new_soap_values = self.descriptor.calculate([system])
+            if fidx >= self.interval:
+                roll_kernel = np.roll(kernel, fidx%self.interval)
+                # computes a contribution to the correlation function
+                # the buffer contains data from fidx-maxlag to fidx. add a forward ACF
+                avg_soap = np.einsum("j,ija->ia", roll_kernel, buffer) #smoothen
+                avg_soap_proj = trafo.project(avg_soap) 
+                self.ridge.fit(new_soap_values, avg_soap_proj)
+            buffer[:,fidx%self.interval,:] = new_soap_values
+
+
+    for trafo in self.transformations:
+            projected = []
+            for system in systems:
+                descriptor = self.descriptor.calculate([system])
+                descriptor_proj = trafo.project(descriptor)
+                projected.append(descriptor_proj)
+                # TODO:
+                self.ridge.fit(descriptor, descriptor_proj)
+    """
     def predict_ridge(self, traj, selected_atoms):
         self.selected_atoms = selected_atoms
         self.descriptor.set_samples(selected_atoms)

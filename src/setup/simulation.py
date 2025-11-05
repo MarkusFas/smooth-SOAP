@@ -8,7 +8,7 @@ from itertools import chain
 import chemiscope
 from src.plots.cov_heatmap import plot_heatmap
 from src.plots.timeseries import plot_projection_atoms, plot_projection_atoms_models
-from src.plots.histograms import plot_2pca
+from src.plots.histograms import plot_2pca, plot_2pca_atoms, plot_2pca_height
 from src.classifier.Logreg import run_logistic_regression
 
 def run_simulation(trj, methods_intervals, **kwargs):
@@ -21,7 +21,6 @@ def run_simulation(trj, methods_intervals, **kwargs):
             random.seed(7)
             # create labels and directories for results
             
-        
             N_train = kwargs.get('train_selected_atoms')
             N_test = kwargs.get('test_selected_atoms')
             is_shuffled = False
@@ -43,6 +42,9 @@ def run_simulation(trj, methods_intervals, **kwargs):
             else:
                 test_atoms = N_test
         
+            #train_atoms = selected_atoms
+            train_atoms = sorted(train_atoms)
+            test_atoms = sorted(test_atoms)
 
             # train our method by specifying the selected atoms
             method.train(trj, train_atoms)
@@ -55,9 +57,9 @@ def run_simulation(trj, methods_intervals, **kwargs):
 
             
             trj_predict = list(chain(*trj))
-            X = method.predict(trj_predict, test_atoms) ##centers T,N,P
+            X = method.predict(trj_predict, test_atoms) ##centers N,T,P
             X_ridge = method.predict_ridge(trj_predict, test_atoms)
-            X = [proj.transpose(1,0,2) for proj in X]
+            X = [proj.transpose(1,0,2) for proj in X]#centers T,N,P
             X_ridge = [proj.transpose(1,0,2) for proj in X_ridge]
             
             # label the trajectories:
@@ -72,11 +74,11 @@ def run_simulation(trj, methods_intervals, **kwargs):
                 # Classificatoin
                 run_logistic_regression(
                     X[0], y, 
-                    outfile_prefix=method.label + '_logreg', 
-                    random_state=42, 
-                    solver='lbfgs', 
+                    outfile_prefix=method.label + '_logreg',
+                    random_state=42,
+                    solver='lbfgs',
                     max_iter=500
-                )  
+                )
             
             
             #4 Post processing
@@ -96,6 +98,20 @@ def run_simulation(trj, methods_intervals, **kwargs):
                 for i, proj in enumerate(X_ridge):
                     plot_2pca(proj, method.label + f'_ridge_{i}')
                 print('Plotted scatterplot of PCA')
+
+            if "pca_atoms" in plots:
+                for i, proj in enumerate(X):
+                    plot_2pca_atoms(proj, method.label + f'_{i}', test_atoms)
+                for i, proj in enumerate(X_ridge):
+                    plot_2pca_atoms(proj, method.label + f'_ridge_{i}', test_atoms)
+                print('Plotted scatterplot of PCA atoms labels')
+            
+            if "pca_height" in plots:
+                for i, proj in enumerate(X):
+                    plot_2pca_height(proj, method.label + f'_{i}', test_atoms, trj_predict)
+                for i, proj in enumerate(X_ridge):
+                    plot_2pca_height(proj, method.label + f'_ridge_{i}', test_atoms, trj_predict)
+                print('Plotted scatterplot of PCA height labels')
 
             print('Plots saved at ' + method.label)
 

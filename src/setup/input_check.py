@@ -3,7 +3,7 @@ import os
 from ase.io.trajectory import Trajectory
 from itertools import chain
 import warnings
-from src.methods import PCA, IVAC, TICA, TILDA, TempPCA, PCAfull, PCAtest, LDA, SpatialPCA, SpatialTempPCA
+from src.methods import PCA, IVAC, TICA, TILDA, TempPCA, PCAfull, PCAtest, LDA, SpatialPCA, SpatialTempPCA, ScikitPCA
 from src.descriptors.SOAP import SOAP_descriptor, SOAP_descriptor_special
 from src.setup.simulation import run_simulation
 from src.setup.simulation_test import run_simulation_test
@@ -212,6 +212,8 @@ def setup_simulation(**kwargs):
                             method_obj = TICA(descriptor, interval, lag, sigma, run_dir)
                         elif method.upper() == 'TILDA':
                             method_obj = TILDA(descriptor, interval, lag, sigma, run_dir)
+                        elif method.upper() == 'SCIKITPCA':
+                            method_obj = ScikitPCA(descriptor, interval, run_dir)
                         else:
                             raise NotImplementedError(f"Method must be one of {implemented_opt}, got {method}")
 
