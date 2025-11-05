@@ -9,6 +9,7 @@ import chemiscope
 from src.plots.cov_heatmap import plot_heatmap
 from src.plots.timeseries import plot_projection_atoms, plot_projection_atoms_models
 from src.plots.histograms import plot_2pca
+from src.classifier.Logreg import run_logistic_regression
 
 def run_simulation(trj, methods_intervals, **kwargs):
     
@@ -56,14 +57,37 @@ def run_simulation(trj, methods_intervals, **kwargs):
             # get predictions with the new representation
             # for prediction we can use the concatenated trajectories
 
+            
             trj_predict = list(chain(*trj))
             X = method.predict(trj_predict, test_atoms) ##centers T,N,P
             X_ridge = method.predict_ridge(trj_predict, test_atoms)
             X = [proj.transpose(1,0,2) for proj in X]
             X_ridge = [proj.transpose(1,0,2) for proj in X_ridge]
+            
+            # label the trajectories:
+            if kwargs['classify']['request']:
+                if kwargs['classify']['switch_index'] is not None:
+                    y = method.get_label(trj[0], test_atoms, kwargs['classify']['switch_index'])
+                elif len(trj) > 1:
+                    y = np.concatenate([np.full((len(t),len(test_atoms)), i) for i, t in enumerate(trj)])
+                else:
+                    ValueError("No labels provided for the trajectory. Please provide 'switch_index' or multiple trajectories for classification.")
+
+                # Classificatoin
+                run_logistic_regression(
+                    X[0], y, 
+                    outfile_prefix=method.label + '_logreg', 
+                    random_state=42, 
+                    solver='lbfgs', 
+                    max_iter=500
+                )  
+            
+            
             #4 Post processing
+
             plots = kwargs.get("plots", [])
 
+            
             if "projection" in plots:
                 plot_projection_atoms(X, [0,1,2,3], method.label, [method.interval]) # need to transpose to T,N,P
                 plot_projection_atoms(X_ridge, [0,1,2,3], method.label + '_ridge', [method.interval]) # need to transpose to T,N,P

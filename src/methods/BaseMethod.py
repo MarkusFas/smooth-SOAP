@@ -395,7 +395,13 @@ class FullMethodBase(ABC):
 
         # return the averaged features 
         return h
-        
+
+    def get_label(self, systems, sel_atoms, switch_index):
+        # This assumes that all frames have the same number of atoms, could be extended
+        labels = np.zeros((len(systems), len(sel_atoms)), dtype=np.int64)
+        labels[switch_index:, :] = 1
+        return labels
+
     @abstractmethod
     def compute_COV(self, traj):
         """

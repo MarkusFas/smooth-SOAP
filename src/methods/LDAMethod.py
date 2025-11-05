@@ -67,17 +67,22 @@ class LDA(FullMethodBase):
         ) / total_N
 
         # Combine both parts
-        self.cov1 = class_cov1
-        self.cov2 = class_cov2
-        N1 = len()
+        self.cov1 = 0.5*(class_cov1 + between_cov1.transpose(0,2,1))
+        eps1 = [1E-8 * np.trace(COV_1) / COV_1.shape[0] for COV_1 in self.cov1]
+        COV_1_reg = [0.5*(COV_1 + COV_1.T) + eps1[i]*np.eye(COV_1.shape[0]) for i, COV_1 in enumerate(self.cov1)]
+        self.cov2 = 0.5*(class_cov2 + between_cov2.transpose(0,2,1))
+        eps2 = [1E-8 * np.trace(COV_1) / COV_1.shape[0] for COV_1 in self.cov1]
+        COV_2_reg = [0.5*(COV_2 + COV_2.T) + eps2[i]*np.eye(COV_2.shape[0]) for i, COV_2 in enumerate(self.cov2)]
+        
+        #N1 = len()
         # arithmetic mean of covariances
         #self.inclass = (class_cov1*traj_N[0] + class_cov2*traj_N[1]) / total_N
         # harmonic mean of covariances
-        self.inclass = 2 * np.linalg.inv(np.linalg.inv(class_cov1) + np.linalg.inv(class_cov2))
-        self.class_diff = (traj_means[0]*traj_N[0] - traj_means[1]*traj_N[1]) / total_N
+        self.inclass = np.array([2 * np.linalg.inv(np.linalg.inv(cov1) + np.linalg.inv(cov2)) for cov1, cov2 in zip(COV_1_reg, COV_2_reg)])
+        diff = (traj_means[0]*traj_N[0] - traj_means[1]*traj_N[1]) / total_N 
+        self.class_diff = np.einsum('ci,cj->cij', diff, diff)
         # Example: use PCA-based transformation for each center
-        self.transformations = [PCA_obj(n_components=4, label=self.label) for n in range(cov1.shape[0])]
-
+        self.transformations = [PCA_obj(n_components=4, label=self.label) for n in range(self.cov1.shape[0])]
         for i, trafo in enumerate(self.transformations):
             trafo.solve_GEV(self.mean[i], self.class_diff[i], self.inclass[i])
 
@@ -180,9 +185,9 @@ class LDA(FullMethodBase):
         -------
         empty
         """
-        metrics = np.array([[mean, np.trace(class_diff), np.trace(inclass)] 
-                    for mean, class_diff, inclass in zip(self.mean, self.class_diff, self.inclass)])
-        header = ["spatialCov", "tempCov"]
+        metrics = np.array([[np.trace(class_diff), np.trace(inclass)] 
+                    for class_diff, inclass in zip(self.class_diff, self.inclass)])
+        header = ["classdiff", "inclass"]
 
         # Make metrics a 2D row vector: shape (1, 2)
         np.savetxt(
