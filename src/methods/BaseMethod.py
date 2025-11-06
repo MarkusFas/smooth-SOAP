@@ -14,7 +14,7 @@ import ase.neighborlist
 from vesin import ase_neighbor_list
 from memory_profiler import profile
 from pathlib import Path
-from sklearn.linear_model import Ridge 
+from sklearn.linear_model import Ridge, SGDRegressor
 from src.transformations.PCAtransform import PCA_obj
 
 
@@ -190,7 +190,7 @@ class FullMethodBase(ABC):
     def fit_ridge(self, traj, ridge_alpha):
         systems = systems_to_torch(traj, dtype=torch.float64)
         soap_block = self.descriptor.calculate(systems[:1])
-        first_soap =  soap_block  
+        first_soap = soap_block  
         buffer = np.zeros((first_soap.shape[0], self.interval, first_soap.shape[1]))
         
         delta=np.zeros(self.interval)
@@ -199,7 +199,8 @@ class FullMethodBase(ABC):
         kernel /= kernel.sum() #kernel = delta
         self.ridge = {}
         for idx, trafo in enumerate(self.transformations):
-            self.ridge[idx] = Ridge(alpha=ridge_alpha, fit_intercept=False)
+            #self.ridge[idx] = Ridge(alpha=ridge_alpha, fit_intercept=False)
+            self.ridge[idx] = SGDRegressor(penalty="l2", alpha=ridge_alpha)
             for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Fit Ridge"):
                 new_soap_values = self.descriptor.calculate([system])
                 if fidx >= self.interval:
@@ -207,9 +208,8 @@ class FullMethodBase(ABC):
                     # computes a contribution to the correlation function
                     # the buffer contains data from fidx-maxlag to fidx. add a forward ACF
                     avg_soap = np.einsum("j,ija->ia", roll_kernel, buffer) #smoothen
-                    avg_soap_proj = trafo.project(avg_soap)
-                    #print('newsoapshape',new_soap_values.shape,'avg_soap_proj',avg_soap_proj.shape) 
-                    self.ridge[idx].fit(new_soap_values, avg_soap_proj)
+                    avg_soap_proj = trafo.project(avg_soap) 
+                    self.ridge[idx].partial_fit(new_soap_values, avg_soap_proj)
                 buffer[:,fidx%self.interval,:] = new_soap_values
 
 

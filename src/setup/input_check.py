@@ -99,7 +99,7 @@ def check_analysis_inputs(trajs, **kwargs):
             raise TypeError('methods need to be a str or List of str')
         else:
             kwargs['methods'] = [kwargs['methods']]
-    return kwargs
+    
 
     if not isinstance(kwargs['model_proj_dims'], list):
         if not isinstance(kwargs['model_proj_dims'], int):
@@ -107,6 +107,14 @@ def check_analysis_inputs(trajs, **kwargs):
     else:
         if not all(isinstance(x, int) for x in kwargs['model_proj_dims']):
             raise TypeError("All elements of test_selected_atoms must be integers")
+
+    if isinstance(kwargs['ridge_alpha'], str):
+        try:
+            kwargs['ridge_alpha'] = float(kwargs['ridge_alpha'])
+        except ValueError:
+            raise TypeError("ridge_alpha must be a float")
+    return kwargs
+
 
 def check_SOAP_inputs(trajs, **kwargs):
     required = ["centers", "neighbors", "cutoff", "max_angular", "max_radial"]
