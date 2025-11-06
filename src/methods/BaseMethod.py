@@ -15,6 +15,7 @@ from vesin import ase_neighbor_list
 from memory_profiler import profile
 from pathlib import Path
 from sklearn.linear_model import Ridge, SGDRegressor
+from sklearn.multioutput import MultiOutputRegressor
 from src.transformations.PCAtransform import PCA_obj
 
 
@@ -139,7 +140,7 @@ class FullMethodBase(ABC):
 
         return projected_per_type  # shape: (#centers ,N_atoms, T, latent_dim)
     
-    def fit_ridge_nonincremental(self, traj, ridge_alpha, selected_atoms):
+    def fit_ridge_nonincremental(self, traj, ridge_alpha):
         systems = systems_to_torch(traj, dtype=torch.float64)
         soap_block = self.descriptor.calculate(systems[:1], selected_samples=self.descriptor.selected_samples)
         print(soap_block.shape)
@@ -200,17 +201,22 @@ class FullMethodBase(ABC):
         self.ridge = {}
         for idx, trafo in enumerate(self.transformations):
             #self.ridge[idx] = Ridge(alpha=ridge_alpha, fit_intercept=False)
-            self.ridge[idx] = SGDRegressor(penalty="l2", alpha=ridge_alpha)
-            for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Fit Ridge"):
-                new_soap_values = self.descriptor.calculate([system])
-                if fidx >= self.interval:
-                    roll_kernel = np.roll(kernel, fidx%self.interval)
-                    # computes a contribution to the correlation function
-                    # the buffer contains data from fidx-maxlag to fidx. add a forward ACF
-                    avg_soap = np.einsum("j,ija->ia", roll_kernel, buffer) #smoothen
-                    avg_soap_proj = trafo.project(avg_soap) 
-                    self.ridge[idx].partial_fit(new_soap_values, avg_soap_proj)
-                buffer[:,fidx%self.interval,:] = new_soap_values
+            base = SGDRegressor(penalty="l2", alpha=ridge_alpha, fit_intercept=False)
+            self.ridge[idx] = MultiOutputRegressor(base)
+
+            for epoch in range(100):
+                print(epoch)
+
+                for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Fit Ridge"):
+                    new_soap_values = self.descriptor.calculate([system])
+                    if fidx >= self.interval:
+                        roll_kernel = np.roll(kernel, fidx%self.interval)
+                        # computes a contribution to the correlation function
+                        # the buffer contains data from fidx-maxlag to fidx. add a forward ACF
+                        avg_soap = np.einsum("j,ija->ia", roll_kernel, buffer) #smoothen
+                        avg_soap_proj = trafo.project(avg_soap) 
+                        self.ridge[idx].partial_fit(new_soap_values, avg_soap_proj)
+                    buffer[:,fidx%self.interval,:] = new_soap_values
 
 
         """for trafo in self.transformations:
