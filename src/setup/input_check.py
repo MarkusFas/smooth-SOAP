@@ -110,11 +110,12 @@ def check_analysis_inputs(trajs, **kwargs):
 
     ridge_alphas = kwargs["ridge_alpha"]
     ridge_alphas_out = []
-    if isinstance(kwargs['ridge_alpha'], str):
+    if isinstance(ridge_alphas, str):
         try:
-            kwargs['ridge_alpha'] = float(kwargs['ridge_alpha'])
+            ridge_alphas = float(ridge_alphas)
         except ValueError:
             raise TypeError("ridge_alpha must be a float")
+        
     if isinstance(ridge_alphas, float) or isinstance(ridge_alphas, int):
         kwargs['ridge_alpha'] = [ridge_alphas]
     elif isinstance(ridge_alphas, list):

@@ -145,7 +145,7 @@ def run_simulation(trj, methods_intervals, **kwargs):
                 cs.save(method.label + '_cs.json')
                 print("saved chemiscope")
 
-    if "heatmap" in plots and len(methods_intervals) >= 2:
+    if ("heatmap" in plots) and len(methods_intervals) >= 2:
         interval_0 = methods_intervals[0]
         interval_1 = methods_intervals[1]
         cov1_int0 = interval_0[0].cov_mu_t
