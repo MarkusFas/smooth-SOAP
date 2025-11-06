@@ -5,9 +5,7 @@ from itertools import chain
 import warnings
 from src.descriptors.SOAP import SOAP_descriptor_special
 from  src.descriptors.model_soap import SOAP_CV as SOAP_descriptor
-from src.methods import PCA, IVAC, TICA, TILDA, TempPCA, PCAfull, PCAtest, LDA, SpatialPCA, SpatialTempPCA
 from src.methods import PCA, IVAC, TICA, TILDA, TempPCA, PCAfull, PCAtest, LDA, SpatialPCA, SpatialTempPCA, ScikitPCA
-from src.descriptors.SOAP import SOAP_descriptor_special
 from src.setup.simulation import run_simulation
 from src.setup.simulation_test import run_simulation_test
 from src.setup.read_data import read_trj
@@ -159,7 +157,7 @@ def setup_simulation(**kwargs):
         descriptor_id = f"{SOAP_cutoff}{SOAP_max_angular}{SOAP_max_radial}"
         
         #descriptor = SOAP_descriptor( SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors)
-        descriptor = SOAP_descriptor(trajs, SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors)
+        descriptor = SOAP_descriptor(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors)
     elif descriptor_name == 'SOAP_atom':
         SOAP_kwargs = check_SOAP_inputs(trajs, **kwargs["SOAP_params"])
         centers = SOAP_kwargs.get('centers')

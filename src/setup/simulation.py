@@ -143,36 +143,12 @@ def run_simulation(trj, methods_intervals, **kwargs):
             plot_heatmap(cov2_int0[i], cov2_int1[i], method.root + f'_spatial_interval{interval_0[0].interval}{interval_1[0].interval}_center{center}' + f'_{i}')
         print('Plotted heatmap')
  
-    if kwargs["model_save"]==True:
-#        print(dir(method.transformations[0]))
-#        print(method.transformations[0].run_label)
+    if kwargs["model_save"]:
         for trans in method.transformations:
-            #print(dir(method.descriptor), kwargs, method.root)#["SOAP_params"])
-
-#            cv=SOAP_CV(trj,kwargs["SOAP_params"]["cutoff"],
-#                       kwargs["SOAP_params"]["max_angular"],
-#                       kwargs["SOAP_params"]["max_radial"],
-#                       kwargs["SOAP_params"]["centers"],
-#                       kwargs["SOAP_params"]["neighbors"],
-#                       pca_matrix=trans.eigvals
-#                       )
-#            print('pca_matrix',method.descriptor.projection_matrix)
-            #print('method.descriptor',dir(method.descriptor))
-            #print('method.descriptor',dir(trans))
-#            print('eivecs', trans.eigvecs[:2]) 
+            method.descriptor.set_atom_types(trj)
             method.descriptor.set_projection_matrix(trans.eigvecs)
             method.descriptor.set_projection_dims(dims=kwargs['model_proj_dims'])
             method.descriptor.set_projection_mu(mu=trans.mu)
-#
-#
-#            from metatomic.torch import systems_to_torch
-#            import torch
-#            systems = systems_to_torch(trj[0][:2])
-#            testdescript=method.descriptor.calculate([systems[0]]) 
-#            print(testdescript.shape, trans.mu.shape, trans.eigvecs[:,:3].shape)
-#            proj=torch.einsum('ij,jk->ik', (torch.tensor(testdescript)-torch.tensor(trans.mu)),torch.tensor(trans.eigvecs[:,:3].copy()))
-#            print(proj, proj.shape)
-##            print('pca_matrix',method.descriptor.projection_matrix) 
             method.descriptor.eval()   
             method.descriptor.save_model(path=method.root+f'/interval_{method.interval}/', name='model_soap')   
             print(f'saved model at {method.root}'+f'/interval_{method.interval}/')    

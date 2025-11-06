@@ -19,7 +19,7 @@ from metatomic.torch import (
 from featomic.torch import SoapPowerSpectrum
 
 class SOAP_CV(torch.nn.Module):
-    def __init__(self, trj, cutoff, max_angular, max_radial, centers, neighbors, projection_matrix=None):
+    def __init__(self, cutoff, max_angular, max_radial, centers, neighbors, projection_matrix=None):
         super().__init__()
         HYPER_PARAMETERS = {
             "cutoff": {
@@ -44,8 +44,7 @@ class SOAP_CV(torch.nn.Module):
             values=torch.tensor([[i,j,k] for i in centers for j in neighbors for k in neighbors if j <=
                 k], dtype=torch.int32),
         )
-        types=[i.number for j in trj for w in j for i in w]
-        self.atomic_types= sorted(set(types), key=types.index) #[torch.tensor([i for i in centers]+[j for j in neighbors if j not in centers ], dtype=torch.int32)]
+
         self.id = f"SOAP_{cutoff}{max_angular}{max_radial}_{centers}"
         
         if projection_matrix !=None:
@@ -112,6 +111,10 @@ class SOAP_CV(torch.nn.Module):
             values=torch.tensor(selected_atoms, dtype=torch.int64).unsqueeze(-1),
         )
 
+    def set_atom_types(self, trj):
+        types=[i.number for j in trj for w in j for i in w]
+        self.atomic_types= sorted(set(types), key=types.index) #[torch.tensor([i for i in centers]+[j for j in neighbors if j not in centers ], dtype=torch.int32)]
+
     def set_projection_dims(self, dims):
         self.proj_dims = dims
 
@@ -134,19 +137,6 @@ class SOAP_CV(torch.nn.Module):
         metadata = ModelMetadata(name="Collective Variable test")
         model = AtomisticModel(self, metadata, capabilities)
         model.save("{}/{}.pt".format(path,name), collect_extensions=f"{path}/extensions")
-
-#    def fit_ridge( alpha=0.3):
-#        #RIDGE
-#        
-#        alpha=0.3
-#        clf = Ridge(alpha=alpha,fit_intercept = False)
-#        #clf=LinearRegression(fit_intercept = False)
-#        clf.fit(np.vstack([gfeatures[i] for i in ids_atoms]), struct_soap_pca[:,:])
-#        self.save_transformation_matrix(clf.coef_)    
-#    
-#    def save_transformation_matrix(coeffs):
-#        torch.save(torch.tensor(coeffs),'model_test.pt'.format(cutoff,amax,rmax))
-
 
 
 
