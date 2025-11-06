@@ -156,7 +156,6 @@ def setup_simulation(**kwargs):
         SOAP_max_radial = SOAP_kwargs.get('max_radial')
         descriptor_id = f"{SOAP_cutoff}{SOAP_max_angular}{SOAP_max_radial}"
         
-        #descriptor = SOAP_descriptor( SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors)
         descriptor = SOAP_descriptor(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors)
     elif descriptor_name == 'SOAP_atom':
         SOAP_kwargs = check_SOAP_inputs(trajs, **kwargs["SOAP_params"])
