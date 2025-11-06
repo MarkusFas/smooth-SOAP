@@ -61,10 +61,13 @@ def run_simulation(trj, methods_intervals, **kwargs):
 
             trj_predict = list(chain(*trj))
             X = method.predict(trj_predict, test_atoms) ##centers N,T,P
-            method.fit_ridge(trj_predict)
-            X_ridge = method.predict_ridge(trj_predict, test_atoms)
             X = [proj.transpose(1,0,2) for proj in X]#centers T,N,P
-            X_ridge = [proj.transpose(1,0,2) for proj in X_ridge]
+
+            if kwargs["ridge"]:
+                method.fit_ridge(trj_predict)
+                X_ridge = method.predict_ridge(trj_predict, test_atoms)
+                X_ridge = [proj.transpose(1,0,2) for proj in X_ridge]
+            
 
             # label the trajectories:
             if kwargs['classify']['request']:
@@ -99,22 +102,25 @@ def run_simulation(trj, methods_intervals, **kwargs):
             if "pca" in plots:
                 for i, proj in enumerate(X):
                     plot_2pca(proj, method.label + f'_{i}')
-                for i, proj in enumerate(X_ridge):
-                    plot_2pca(proj, method.label + f'_ridge_{i}')
+                if kwargs["ridge"]:
+                    for i, proj in enumerate(X_ridge):
+                        plot_2pca(proj, method.label + f'_ridge_{i}')
                 print('Plotted scatterplot of PCA')
 
             if "pca_atoms" in plots:
                 for i, proj in enumerate(X):
                     plot_2pca_atoms(proj, method.label + f'_{i}', test_atoms)
-                for i, proj in enumerate(X_ridge):
-                    plot_2pca_atoms(proj, method.label + f'_ridge_{i}', test_atoms)
+                if kwargs["ridge"]:
+                    for i, proj in enumerate(X_ridge):
+                        plot_2pca_atoms(proj, method.label + f'_ridge_{i}', test_atoms)
                 print('Plotted scatterplot of PCA atoms labels')
             
             if "pca_height" in plots:
                 for i, proj in enumerate(X):
                     plot_2pca_height(proj, method.label + f'_{i}', test_atoms, trj_predict)
-                for i, proj in enumerate(X_ridge):
-                    plot_2pca_height(proj, method.label + f'_ridge_{i}', test_atoms, trj_predict)
+                if kwargs["ridge"]:
+                    for i, proj in enumerate(X_ridge):
+                        plot_2pca_height(proj, method.label + f'_ridge_{i}', test_atoms, trj_predict)
                 print('Plotted scatterplot of PCA height labels')
 
             print('Plots saved at ' + method.label)
