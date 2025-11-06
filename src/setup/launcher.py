@@ -43,12 +43,12 @@ if __name__ == "__main__":
     #input_file = 'systems/test_hannah/test_interval1.yaml'
     #input_file = 'systems/smallcell_interface_350/test_intervaltica.yaml'
 
-    input_file= 'systems/BaTiO3/test.yaml'
+    #input_file= 'systems/BaTiO3/test.yaml'
 
-    #if len(sys.argv)>0:
-    #    input_file=sys.argv[1]
-    #else:
-    #   print('Please provide default file')
+    if len(sys.argv)>0:
+        input_file=sys.argv[1]
+    else:
+       print('Please provide default file')
 
     #input_file = 'systems/ice_water_sep/test_intervaltemp.yaml'
     user_cfg = load_config(input_file)

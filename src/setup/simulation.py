@@ -64,12 +64,11 @@ def run_simulation(trj, methods_intervals, **kwargs):
             X = [proj.transpose(1,0,2) for proj in X]#centers T,N,P
 
             if kwargs["ridge"]:
-                print('fit ridge 1')
-                method.fit_ridge(trj_predict, kwargs["ridge_alpha"])
-                #print('fit ridge 2')
-                #method.fit_ridge_nonincremental(trj[0], kwargs["ridge_alpha"])
+                #print('fit ridge 1')
+                #method.fit_ridge(trj_predict, kwargs["ridge_alpha"])
+                print('fit ridge 2')
+                method.fit_ridge_nonincremental(trj[0], kwargs["ridge_alpha"])
 
-                #X_ridge = method.predict_ridge(trj[0], train_atoms)
                 X_ridge = method.predict_ridge(trj_predict, test_atoms)
                 X_ridge = [proj.transpose(1,0,2) for proj in X_ridge]
             
