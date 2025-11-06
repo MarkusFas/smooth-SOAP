@@ -38,17 +38,24 @@ if __name__ == "__main__":
     #input_file = 'systems/icewater/test_interval1.yaml'
 
     #input_file = 'systems/smallcell_interface_350/test_intervaltemp.yaml'
-    input_file = 'systems/smallcell_interface_350/test_interval_lf0.yaml'
+    #input_file = 'systems/smallcell_interface_350/test_interval_lf0.yaml'
     #input_file = 'systems/cycloAE/test_interval_hf0.yaml'
     #input_file = 'systems/test_hannah/test_interval1.yaml'
     #input_file = 'systems/smallcell_interface_350/test_intervaltica.yaml'
 
+    input_file= 'systems/BaTiO3/test.yaml'
+
+    #if len(sys.argv)>0:
+    #    input_file=sys.argv[1]
+    #else:
+    #   print('Please provide default file')
 
     #input_file = 'systems/ice_water_sep/test_intervaltemp.yaml'
     user_cfg = load_config(input_file)
     params = merge_params(DEFAULT_PARAMS, user_cfg, input_file)
     setup_simulation(**params)
 
+    exit()
     input_file = 'systems/smallcell_interface_350/test_intervalhfpca.yaml'
     #input_file = 'systems/cycloAE/test_interval_hf1.yaml'
     user_cfg = load_config(input_file)
