@@ -361,9 +361,11 @@ class IVAC(FullMethodBase):
         sum_soaps_corr = np.zeros((len(self.atomsel_element),first_soap.shape[1],))
         nsmp = np.zeros(len(self.atomsel_element))
         nsmp_corr = np.zeros(len(self.atomsel_element))
-        delta=np.zeros(self.interval)
-        delta[self.interval//2]=1
-        kernel=gaussian_filter(delta,sigma=(self.interval-1)//(2*3)) # cutoff at 3 sigma, leaves 0.1%
+        delta = np.zeros(self.interval)
+        delta[self.interval//2] = 1
+        kernel = gaussian_filter(delta,sigma=(self.interval-1)//(2)) # cutoff at 3 sigma, leaves 0.1%
+        kernel /= kernel.sum()
+
         ntimesteps = np.zeros(len(self.atomsel_element), dtype=int)
         ntimesteps_corr = np.zeros(len(self.atomsel_element), dtype=int)
         #IVAC specific:

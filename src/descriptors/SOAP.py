@@ -12,6 +12,7 @@ from memory_profiler import profile
 
 
 class SOAP_descriptor():
+
     def __init__(self, cutoff, max_angular, max_radial, centers, neighbors, selected_atoms=None):
         HYPER_PARAMETERS = {
             "cutoff": {
@@ -20,7 +21,7 @@ class SOAP_descriptor():
             },
             "density": {
                 "type": "Gaussian",
-                "width": 0.25, #changed from 0.3
+                "width": 0.3, #changed from 0.3
             },
             "basis": {
                 "type": "TensorProduct",
@@ -66,7 +67,7 @@ class SOAP_descriptor():
         soap = soap.keys_to_samples("center_type")
         soap = soap.keys_to_properties(["neighbor_1_type", "neighbor_2_type"])
         self.soap_block = soap.block()
-        return self.soap_block.values.numpy() #TODO: return numpy
+        return self.soap_block.values.numpy()
     
 
 class SOAP_descriptor_special():
