@@ -12,7 +12,9 @@ from memory_profiler import profile
 
 
 class SOAP_descriptor():
-
+    """
+    This function has been replaced with model_soap 
+    """
     def __init__(self, cutoff, max_angular, max_radial, centers, neighbors, selected_atoms=None):
         HYPER_PARAMETERS = {
             "cutoff": {

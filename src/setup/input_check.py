@@ -3,8 +3,9 @@ import os
 from ase.io.trajectory import Trajectory
 from itertools import chain
 import warnings
+from src.descriptors.SOAP import SOAP_descriptor_special
+from  src.descriptors.model_soap import SOAP_CV
 from src.methods import PCA, IVAC, TICA, TILDA, TempPCA, PCAfull, PCAtest, LDA, SpatialPCA, SpatialTempPCA, ScikitPCA
-from src.descriptors.SOAP import SOAP_descriptor, SOAP_descriptor_special
 from src.setup.simulation import run_simulation
 from src.setup.simulation_test import run_simulation_test
 from src.setup.read_data import read_trj
@@ -100,6 +101,12 @@ def check_analysis_inputs(trajs, **kwargs):
             kwargs['methods'] = [kwargs['methods']]
     return kwargs
 
+    if not isinstance(kwargs['model_proj_dims'], list):
+        if not isinstance(kwargs['model_proj_dims'], int):
+            raise TypeError("test_selected_atoms must be integer or list of integers")
+    else:
+        if not all(isinstance(x, int) for x in kwargs['model_proj_dims']):
+            raise TypeError("All elements of test_selected_atoms must be integers")
 
 def check_SOAP_inputs(trajs, **kwargs):
     required = ["centers", "neighbors", "cutoff", "max_angular", "max_radial"]
@@ -149,7 +156,7 @@ def setup_simulation(**kwargs):
         SOAP_max_radial = SOAP_kwargs.get('max_radial')
         descriptor_id = f"{SOAP_cutoff}{SOAP_max_angular}{SOAP_max_radial}"
         
-        descriptor = SOAP_descriptor(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors)
+        descriptor = SOAP_CV(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors)
     elif descriptor_name == 'SOAP_atom':
         SOAP_kwargs = check_SOAP_inputs(trajs, **kwargs["SOAP_params"])
         centers = SOAP_kwargs.get('centers')
@@ -167,7 +174,7 @@ def setup_simulation(**kwargs):
     kwargs = check_analysis_inputs(trajs, **kwargs)
     
     opt_methods = kwargs.get('methods')  # list of methods
-    implemented_opt = ['PCA', 'PCAfull', 'TICA', 'TEMPPCA', 'PCAtest', "LDA", "SpatialPCA"]
+    implemented_opt = ['PCA', 'PCAfull', 'TICA','IVAC', 'TEMPPCA', 'PCAtest', "LDA", "SpatialPCA"]
 
     system = kwargs["system"]
     version = kwargs["version"]
@@ -223,5 +230,8 @@ def setup_simulation(**kwargs):
 
     # TODO: check requested plots
     
+    model_save=kwargs["model_save"]
+    print(kwargs["model_proj_dims"])
+
     # Pass nested lists to run_simulation
     run_simulation(trajs, methods_intervals, **kwargs)
