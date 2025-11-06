@@ -64,7 +64,7 @@ def run_simulation(trj, methods_intervals, **kwargs):
             X = [proj.transpose(1,0,2) for proj in X]#centers T,N,P
 
             if kwargs["ridge"]:
-                method.fit_ridge(trj_predict)
+                method.fit_ridge(trj_predict, kwargs["ridge_alpha"])
                 X_ridge = method.predict_ridge(trj_predict, test_atoms)
                 X_ridge = [proj.transpose(1,0,2) for proj in X_ridge]
             
@@ -95,7 +95,8 @@ def run_simulation(trj, methods_intervals, **kwargs):
             
             if "projection" in plots:
                 plot_projection_atoms(X, [0,1,2,3], method.label, [method.interval]) # need to transpose to T,N,P
-                plot_projection_atoms(X_ridge, [0,1,2,3], method.label + '_ridge', [method.interval]) # need to transpose to T,N,P
+                if kwargs["ridge"]:
+                    plot_projection_atoms(X_ridge, [0,1,2,3], method.label + '_ridge', [method.interval]) # need to transpose to T,N,P
                 #plot_projection_atoms_models(X, [0,1,2,3], label, [method.interval])
                 print('Plotted projected timeseries for test atoms')
 

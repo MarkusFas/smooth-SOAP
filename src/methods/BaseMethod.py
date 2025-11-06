@@ -140,7 +140,7 @@ class FullMethodBase(ABC):
         return projected_per_type  # shape: (#centers ,N_atoms, T, latent_dim)
     
 
-    def fit_ridge(self, traj):
+    def fit_ridge(self, traj, ridge_alpha):
         systems = systems_to_torch(traj, dtype=torch.float64)
         soap_block = self.descriptor.calculate(systems[:1])
         first_soap =  soap_block  
@@ -152,8 +152,8 @@ class FullMethodBase(ABC):
         kernel /= kernel.sum() #kernel = delta
         self.ridge = {}
         for idx, trafo in enumerate(self.transformations):
-            self.ridge[idx] = Ridge(alpha=1e-6)
-            for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Computing SOAPs"):
+            self.ridge[idx] = Ridge(alpha=ridge_alpha)
+            for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Fit Ridge"):
                 new_soap_values = self.descriptor.calculate([system])
                 if fidx >= self.interval:
                     roll_kernel = np.roll(kernel, fidx%self.interval)

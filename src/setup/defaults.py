@@ -30,7 +30,8 @@ DEFAULT_PARAMS = {
     },
 
     "plots": ["projection"],
-    "ridge": False
+    "ridge": False,
+    "ridge_alpha": 1e-6,
     "model_save": False,
     "model_proj_dims": [0],
     
