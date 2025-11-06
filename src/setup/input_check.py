@@ -108,11 +108,28 @@ def check_analysis_inputs(trajs, **kwargs):
         if not all(isinstance(x, int) for x in kwargs['model_proj_dims']):
             raise TypeError("All elements of test_selected_atoms must be integers")
 
-    if isinstance(kwargs['ridge_alpha'], str):
+    ridge_alphas = kwargs["ridge_alpha"]
+    ridge_alphas_out = []
+    if isinstance(ridge_alphas, str):
         try:
-            kwargs['ridge_alpha'] = float(kwargs['ridge_alpha'])
+            ridge_alphas = float(ridge_alphas)
         except ValueError:
             raise TypeError("ridge_alpha must be a float")
+        
+    if isinstance(ridge_alphas, float) or isinstance(ridge_alphas, int):
+        kwargs['ridge_alpha'] = [ridge_alphas]
+    elif isinstance(ridge_alphas, list):
+        for alpha in ridge_alphas:
+            try:
+                ridge_alphas_out.append(float(alpha))
+            except ValueError:
+                raise TypeError("all elements of 'ridge_alpha' list must be floats")
+        if not all(isinstance(i, float) or isinstance(i, int) for i in ridge_alphas_out):
+            raise TypeError("all elements of 'ridge_alpha' list must be integers or floats")
+    else:
+        raise TypeError("ridge_alpha must be an integer, float or list of integers")
+    kwargs['ridge_alpha'] = ridge_alphas_out
+
     return kwargs
 
 
@@ -196,43 +213,44 @@ def setup_simulation(**kwargs):
         for lag in kwargs.get('lag'):
             for sigma in kwargs.get('sigma'):
                 for spatial_cutoff in kwargs.get('spatial_cutoff'):
-                    for method in opt_methods:
-                        run_dir = f'results/{system}/{version}/{kwargs.get("descriptor")}/{descriptor_id}/{specifier}/'
-                        
-                        # Instantiate method
-                        method_obj = None
-                        if method.upper() == 'PCA':
-                            method_obj = PCA(descriptor, interval, run_dir)
-                        elif method.upper() == 'IVAC':
-                            #TODO: input checks for the lag parameters
-                            max_lag = kwargs.get("max_lag")
-                            min_lag = kwargs.get("min_lag")
-                            lag_step = kwargs.get("lag_step")
-                            method_obj = IVAC(descriptor, interval, max_lag, min_lag, lag_step, run_dir)
-                        elif method.upper() == 'TEMPPCA':
-                            method_obj = TempPCA(descriptor, interval, run_dir)
-                        elif method.upper() == 'PCAFULL':
-                            method_obj = PCAfull(descriptor, interval, run_dir)
-                        elif method.upper() == 'PCATEST':
-                            method_obj = PCAtest(descriptor, interval, run_dir)
-                        elif method.upper() == 'SPATIALPCA':
-                            #TODO add input check
-                            method_obj = SpatialPCA(descriptor, interval, sigma, spatial_cutoff, run_dir)
-                        elif method.upper() == 'SPATIALTEMPPCA':
-                            #TODO add input check
-                            method_obj = SpatialTempPCA(descriptor, interval, sigma, spatial_cutoff, run_dir)
-                        elif method.upper() == 'LDA':
-                            method_obj = LDA(descriptor, interval, run_dir)
-                        elif method.upper() == 'TICA':
-                            method_obj = TICA(descriptor, interval, lag, sigma, run_dir)
-                        elif method.upper() == 'TILDA':
-                            method_obj = TILDA(descriptor, interval, lag, sigma, run_dir)
-                        elif method.upper() == 'SCIKITPCA':
-                            method_obj = ScikitPCA(descriptor, interval, run_dir)
-                        else:
-                            raise NotImplementedError(f"Method must be one of {implemented_opt}, got {method}")
+                    for ridge_alpha in kwargs.get('ridge_alpha'):
+                        for method in opt_methods:
+                            run_dir = f'results/{system}/{version}/{kwargs.get("descriptor")}/{descriptor_id}/{specifier}/'
+                            
+                            # Instantiate method
+                            method_obj = None
+                            if method.upper() == 'PCA':
+                                method_obj = PCA(descriptor, interval, ridge_alpha, run_dir)
+                            elif method.upper() == 'IVAC':
+                                #TODO: input checks for the lag parameters
+                                max_lag = kwargs.get("max_lag")
+                                min_lag = kwargs.get("min_lag")
+                                lag_step = kwargs.get("lag_step")
+                                method_obj = IVAC(descriptor, interval, max_lag, min_lag, lag_step, ridge_alpha, run_dir)
+                            elif method.upper() == 'TEMPPCA':
+                                method_obj = TempPCA(descriptor, interval, ridge_alpha, run_dir)
+                            elif method.upper() == 'PCAFULL':
+                                method_obj = PCAfull(descriptor, interval, ridge_alpha, run_dir)
+                            elif method.upper() == 'PCATEST':
+                                method_obj = PCAtest(descriptor, interval, ridge_alpha, run_dir)
+                            elif method.upper() == 'SPATIALPCA':
+                                #TODO add input check
+                                method_obj = SpatialPCA(descriptor, interval, sigma, spatial_cutoff, ridge_alpha, run_dir)
+                            elif method.upper() == 'SPATIALTEMPPCA':
+                                #TODO add input check
+                                method_obj = SpatialTempPCA(descriptor, interval, sigma, spatial_cutoff, ridge_alpha, run_dir)
+                            elif method.upper() == 'LDA':
+                                method_obj = LDA(descriptor, interval, ridge_alpha, run_dir)
+                            elif method.upper() == 'TICA':
+                                method_obj = TICA(descriptor, interval, lag, sigma, ridge_alpha, run_dir)
+                            elif method.upper() == 'TILDA':
+                                method_obj = TILDA(descriptor, interval, lag, sigma, ridge_alpha, run_dir)
+                            elif method.upper() == 'SCIKITPCA':
+                                method_obj = ScikitPCA(descriptor, interval, ridge_alpha, run_dir)
+                            else:
+                                raise NotImplementedError(f"Method must be one of {implemented_opt}, got {method}")
 
-                        used_methods.append(method_obj)
+                            used_methods.append(method_obj)
 
         methods_intervals.append(used_methods)
 
@@ -240,6 +258,6 @@ def setup_simulation(**kwargs):
     
     model_save=kwargs["model_save"]
     print(kwargs["model_proj_dims"])
-
+    print(kwargs['plots'])
     # Pass nested lists to run_simulation
     run_simulation(trajs, methods_intervals, **kwargs)

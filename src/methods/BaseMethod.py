@@ -28,18 +28,20 @@ class FullMethodBase(ABC):
     the descriptor-specific covariance computation in `compute_COV()`.
     """
 
-    def __init__(self, descriptor, interval, lag, sigma, root, method=None):
+    def __init__(self, descriptor, interval, lag, sigma, ridge_alpha, root, method=None):
         self.interval = interval
         self.lag = lag
         self.sigma = sigma
         self.root = os.path.join(root, method)
         self.descriptor = descriptor
         self.transformations = None
+        self.ridge_alpha = ridge_alpha
         label = os.path.join(
             self.root,
             f'interval_{self.interval}',
             f'lag_{self.lag}',
             f'sigma_{self.sigma}',
+            f'ridge_a{ridge_alpha}',
         )
         Path(label).mkdir(parents=True, exist_ok=True)
         self.label = os.path.join(label, self.descriptor.id)
@@ -188,7 +190,7 @@ class FullMethodBase(ABC):
       
 
 
-    def fit_ridge(self, traj, ridge_alpha):
+    def fit_ridge(self, traj):
         systems = systems_to_torch(traj, dtype=torch.float64)
         soap_block = self.descriptor.calculate(systems[:1])
         first_soap = soap_block  
@@ -201,7 +203,7 @@ class FullMethodBase(ABC):
         self.ridge = {}
         for idx, trafo in enumerate(self.transformations):
             #self.ridge[idx] = Ridge(alpha=ridge_alpha, fit_intercept=False)
-            base = SGDRegressor(penalty="l2", alpha=ridge_alpha, fit_intercept=False)
+            base = SGDRegressor(penalty="l2", alpha=self.ridge_alpha, fit_intercept=False)
             self.ridge[idx] = MultiOutputRegressor(base)
 
             for epoch in range(100):

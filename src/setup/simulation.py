@@ -64,10 +64,11 @@ def run_simulation(trj, methods_intervals, **kwargs):
             X = [proj.transpose(1,0,2) for proj in X]#centers T,N,P
 
             if kwargs["ridge"]:
-                #print('fit ridge 1')
-                #method.fit_ridge(trj_predict, kwargs["ridge_alpha"])
-                print('fit ridge 2')
-                method.fit_ridge_nonincremental(trj[0], kwargs["ridge_alpha"])
+                print('fit ridge 1')
+                method.fit_ridge(trj_predict)
+  
+                #print('fit ridge 2')
+                #method.fit_ridge_nonincremental(trj[0], kwargs["ridge_alpha"])
 
                 X_ridge = method.predict_ridge(trj_predict, test_atoms)
                 X_ridge = [proj.transpose(1,0,2) for proj in X_ridge]
@@ -143,7 +144,7 @@ def run_simulation(trj, methods_intervals, **kwargs):
                 cs.save(method.label + '_cs.json')
                 print("saved chemiscope")
 
-    if "heatmap" in plots and len(methods_intervals) >= 2:
+    if ("heatmap" in plots) and len(methods_intervals) >= 2:
         interval_0 = methods_intervals[0]
         interval_1 = methods_intervals[1]
         cov1_int0 = interval_0[0].cov_mu_t
