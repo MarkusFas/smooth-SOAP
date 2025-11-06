@@ -257,6 +257,6 @@ def setup_simulation(**kwargs):
     
     model_save=kwargs["model_save"]
     print(kwargs["model_proj_dims"])
-
+    print(kwargs['plots'])
     # Pass nested lists to run_simulation
     run_simulation(trajs, methods_intervals, **kwargs)

@@ -38,12 +38,12 @@ if __name__ == "__main__":
     #input_file = 'systems/icewater/test_interval1.yaml'
 
     #input_file = 'systems/smallcell_interface_350/test_intervaltemp.yaml'
-    #input_file = 'systems/smallcell_interface_350/test_interval_lf0.yaml'
+    input_file = 'systems/smallcell_interface_350/test_interval_lf0.yaml'
     #input_file = 'systems/cycloAE/test_interval_hf0.yaml'
     #input_file = 'systems/test_hannah/test_interval1.yaml'
     #input_file = 'systems/smallcell_interface_350/test_intervaltica.yaml'
 
-    input_file= 'systems/BaTiO3/test.yaml'
+    #input_file= 'systems/BaTiO3/test.yaml'
 
     #if len(sys.argv)>0:
     #    input_file=sys.argv[1]
