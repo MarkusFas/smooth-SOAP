@@ -53,18 +53,19 @@ def run_simulation(trj, methods_intervals, **kwargs):
             method.train(trj, train_atoms)
 
             method.log_metrics()
-            
-                
+
+
             # get predictions with the new representation
             # for prediction we can use the concatenated trajectories
 
-            
+
             trj_predict = list(chain(*trj))
             X = method.predict(trj_predict, test_atoms) ##centers N,T,P
+            method.fit_ridge(trj_predict)
             X_ridge = method.predict_ridge(trj_predict, test_atoms)
             X = [proj.transpose(1,0,2) for proj in X]#centers T,N,P
             X_ridge = [proj.transpose(1,0,2) for proj in X_ridge]
-            
+
             # label the trajectories:
             if kwargs['classify']['request']:
                 if kwargs['classify']['switch_index'] is not None:

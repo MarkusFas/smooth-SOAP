@@ -52,11 +52,13 @@ class SOAP_CV(torch.nn.Module):
         else:
             self.projection_matrix=None
 
-    def calculate(self, systems):
-        
+    def calculate(self, systems, selected_samples=None):
+        if selected_samples is None:
+            selected_samples = self.selected_samples
+
         soap = self.calculator(
             systems,
-            selected_samples=self.selected_samples,
+            selected_samples=selected_samples,
             selected_keys=self.selected_keys,
         )
         
