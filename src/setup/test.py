@@ -2,8 +2,7 @@ import random
 
 import numpy as np
 
-for i in range(3):
-    random.seed(1)
-    A = np.arange(10)
-    random.shuffle(A)
-    print(A)
+a = {1:'ok'}
+
+for i in range(4):
+    print(a.get(1, 'not found'))
