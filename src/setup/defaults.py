@@ -31,7 +31,10 @@ DEFAULT_PARAMS = {
 
     "plots": ["projection"],
     "ridge": False,
+<<<<<<< HEAD
     "ridge_alpha": 1e-6,
+=======
+>>>>>>> origin/main
     "model_save": False,
     "model_proj_dims": [0],
     
