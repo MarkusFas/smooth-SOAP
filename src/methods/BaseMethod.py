@@ -63,6 +63,7 @@ class FullMethodBase(ABC):
         traj_cov1 = []
         traj_cov2 = []
         traj_N = []
+        print('before compute cov')
         for traj in trajs:
             mean, cov1, cov2 = self.compute_COV(traj)
             traj_means.append(mean)
