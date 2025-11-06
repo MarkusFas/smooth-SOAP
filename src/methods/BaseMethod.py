@@ -16,8 +16,6 @@ from memory_profiler import profile
 from pathlib import Path
 from sklearn.linear_model import Ridge, SGDRegressor
 from src.transformations.PCAtransform import PCA_obj
-from sklearn.linear_model import 
-
 
 
 class FullMethodBase(ABC):
@@ -155,7 +153,7 @@ class FullMethodBase(ABC):
         self.ridge = {}
         for idx, trafo in enumerate(self.transformations):
             #self.ridge[idx] = Ridge(alpha=ridge_alpha, fit_intercept=False)
-            self.ridge[idx] = SGDRegressor(penalty="l2", alpha=alpha_value)
+            self.ridge[idx] = SGDRegressor(penalty="l2", alpha=ridge_alpha)
             for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Fit Ridge"):
                 new_soap_values = self.descriptor.calculate([system])
                 if fidx >= self.interval:
