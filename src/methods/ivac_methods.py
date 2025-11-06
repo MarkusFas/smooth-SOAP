@@ -17,9 +17,9 @@ from src.methods.BaseMethod import FullMethodBase
 
 class TICA(FullMethodBase):
 
-    def __init__(self, descriptor, interval, lag, sigma, root):
+    def __init__(self, descriptor, interval, lag, sigma, ridge_alpha, root):
         self.name = 'TICA'
-        super().__init__(descriptor, interval, lag=lag, root=root, sigma=sigma, method=self.name)
+        super().__init__(descriptor, interval, lag=lag, root=root, sigma=sigma, ridge_alpha=ridge_alpha, method=self.name)
 
     def compute_COV(self, traj):
         """
@@ -156,9 +156,9 @@ class TICA(FullMethodBase):
 #TODO : add lag to self.label
 class TILDA(FullMethodBase):
 
-    def __init__(self, descriptor, interval, lag, sigma, root):
+    def __init__(self, descriptor, interval, lag, sigma, ridge_alpha, root):
         self.name = 'TILDA'
-        super().__init__(descriptor, interval, lag=lag, root=root, sigma=sigma, method=self.name)
+        super().__init__(descriptor, interval, lag=lag, root=root, sigma=sigma, ridge_alpha=ridge_alpha, method=self.name)
 
     def compute_COV(self, traj):
         """
@@ -314,12 +314,12 @@ class TILDA(FullMethodBase):
 
 class IVAC(FullMethodBase):
 
-    def __init__(self, descriptor, interval, max_lag, min_lag, lag_step, root):
+    def __init__(self, descriptor, interval, max_lag, min_lag, lag_step, ridge_alpha, root):
         self.name = 'IVAC'
         self.max_lag = max_lag
         self.min_lag = min_lag
         self.lag_step = lag_step
-        super().__init__(descriptor, interval, lag='ivac', root=root, sigma=0, method=self.name)
+        super().__init__(descriptor, interval, lag='ivac', root=root, sigma=0, ridge_alpha=ridge_alpha, method=self.name)
 
     def compute_COV(self, traj):
         """

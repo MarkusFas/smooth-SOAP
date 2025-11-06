@@ -16,11 +16,13 @@ from sklearn.decomposition import PCA as skPCA
 from src.transformations.PCAtransform import PCA_obj
 from src.methods.BaseMethod import FullMethodBase
 from sklearn.linear_model import Ridge 
+
+
 class ScikitPCA(FullMethodBase):
 
-    def __init__(self, descriptor, interval, root):
+    def __init__(self, descriptor, interval, ridge_alpha, root):
         self.name = 'ScikitPCA'
-        super().__init__(descriptor, interval, lag=0, root=root, sigma=0, method=self.name)
+        super().__init__(descriptor, interval, lag=0, root=root, sigma=0, ridge_alpha=ridge_alpha, method=self.name)
         self.pca = None
 
     def train(self, trajs, selected_atoms):
@@ -175,9 +177,9 @@ class ScikitPCA(FullMethodBase):
 
 class PCA(FullMethodBase):
 
-    def __init__(self, descriptor, interval, root):
+    def __init__(self, descriptor, interval, ridge_alpha, root):
         self.name = 'PCA'
-        super().__init__(descriptor, interval, lag=0, root=root, sigma=0, method=self.name)
+        super().__init__(descriptor, interval, lag=0, root=root, sigma=0, ridge_alpha=ridge_alpha, method=self.name)
         
 
     def compute_COV(self, traj):
@@ -284,9 +286,9 @@ class PCA(FullMethodBase):
 
 class PCAtest(FullMethodBase):
 
-    def __init__(self, descriptor, interval, root):
+    def __init__(self, descriptor, interval, ridge_alpha, root):
         self.name = 'PCAtest'
-        super().__init__(descriptor, interval, lag=0, root=root, sigma=0, method=self.name)
+        super().__init__(descriptor, interval, lag=0, root=root, sigma=0, ridge_alpha=ridge_alpha, method=self.name)
         
     def compute_COV(self, traj):
         """
@@ -381,9 +383,9 @@ class PCAtest(FullMethodBase):
 
 class PCAfull(FullMethodBase):
 
-    def __init__(self, descriptor, interval, root):
+    def __init__(self, descriptor, interval, ridge_alpha, root):
         self.name = 'PCAfull'
-        super().__init__(descriptor, interval, lag=0, root=root, sigma=0, method=self.name)
+        super().__init__(descriptor, interval, lag=0, root=root, sigma=0, ridge_alpha=ridge_alpha, method=self.name)
         
 
     def compute_COV(self, traj):
@@ -535,9 +537,9 @@ class PCAfull(FullMethodBase):
 
 class SpatialPCA(FullMethodBase):
 
-    def __init__(self, descriptor, interval, sigma, root):
+    def __init__(self, descriptor, interval, sigma, ridge_alpha, root):
         self.name = 'SpatialPCA'
-        super().__init__(descriptor, interval, lag=0, root=root, sigma=sigma, method=self.name)
+        super().__init__(descriptor, interval, lag=0, root=root, sigma=sigma, ridge_alpha=ridge_alpha, method=self.name)
 
 
     def compute_COV(self, traj):
@@ -674,9 +676,9 @@ class SpatialPCA(FullMethodBase):
 
 class SpatialPCA(FullMethodBase):
 
-    def __init__(self, descriptor, interval, sigma, cutoff, root):
+    def __init__(self, descriptor, interval, sigma, cutoff, ridge_alpha, root):
         self.name = 'SpatialPCA'
-        super().__init__(descriptor, interval, lag=0, root=root, sigma=sigma, method=self.name)
+        super().__init__(descriptor, interval, lag=0, root=root, sigma=sigma, ridge_alpha=ridge_alpha, method=self.name)
         self.descriptor_spatial = descriptor
         self.spatial_cutoff = cutoff
         self.label = self.label + f'cut_{self.spatial_cutoff}'
@@ -911,9 +913,9 @@ class SpatialPCA(FullMethodBase):
 
 class SpatialTempPCA(FullMethodBase):
 
-    def __init__(self, descriptor, interval, sigma,cutoff, root):
+    def __init__(self, descriptor, interval, sigma, cutoff, ridge_alpha, root):
         self.name = 'SpatialTempPCA'
-        super().__init__(descriptor, interval, lag=0, root=root, sigma=sigma, method=self.name)
+        super().__init__(descriptor, interval, lag=0, root=root, sigma=sigma, ridge_alpha=ridge_alpha, method=self.name)
         self.descriptor_spatial = descriptor
         self.spatial_cutoff = cutoff
         self.label = self.label + f'cut_{self.spatial_cutoff}'

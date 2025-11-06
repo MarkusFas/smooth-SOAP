@@ -17,9 +17,9 @@ from src.methods.BaseMethod import FullMethodBase
 
 class LDA(FullMethodBase):
 
-    def __init__(self, descriptor, interval, root):
+    def __init__(self, descriptor, interval, ridge_alpha, root):
         self.name = 'LDA'
-        super().__init__(descriptor, interval, lag=0, root=root, sigma=0, method=self.name)
+        super().__init__(descriptor, interval, lag=0, root=root, sigma=0, ridge_alpha=ridge_alpha, method=self.name)
 
   
     def train(self, trajs, selected_atoms):

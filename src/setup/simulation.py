@@ -64,7 +64,7 @@ def run_simulation(trj, methods_intervals, **kwargs):
             X = [proj.transpose(1,0,2) for proj in X]#centers T,N,P
 
             if kwargs["ridge"]:
-                method.fit_ridge(trj_predict, kwargs["ridge_alpha"])
+                method.fit_ridge(trj_predict)
                 X_ridge = method.predict_ridge(trj_predict, test_atoms)
                 X_ridge = [proj.transpose(1,0,2) for proj in X_ridge]
             
