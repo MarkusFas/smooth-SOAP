@@ -48,7 +48,8 @@ def run_simulation(trj, methods_intervals, **kwargs):
             #train_atoms = selected_atoms
             train_atoms = sorted(train_atoms)
             test_atoms = sorted(test_atoms)
-
+            #print("WARNING SAME TEST AND TRAIN ATOMS")
+            #test_atoms = train_atoms
             # train our method by specifying the selected atoms
             method.train(trj, train_atoms)
 
@@ -64,11 +65,11 @@ def run_simulation(trj, methods_intervals, **kwargs):
             X = [proj.transpose(1,0,2) for proj in X]#centers T,N,P
 
             if kwargs["ridge"]:
-                method.fit_ridge(trj_predict)
+                #method.fit_ridge(trj_predict)
                 print('fit ridge 1')
   
                 #print('fit ridge 2')
-                #method.fit_ridge_nonincremental(trj[0], kwargs["ridge_alpha"])
+                method.fit_ridge_nonincremental(trj[0])
 
                 #X_ridge = method.predict_ridge(trj[0], train_atoms)
                 X_ridge = method.predict_ridge(trj_predict, test_atoms)

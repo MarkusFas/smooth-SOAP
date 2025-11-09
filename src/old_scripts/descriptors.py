@@ -44,13 +44,13 @@ def spatial_averaging(system, features, sigma, sel_atoms):
 
     h_norm = h / weight_sum[:, None]
     
-    h /= (self_weight + w.sum())
+    #h /= (self_weight + w.sum())
     # get calculate the gaussian weight
 
     # normalize vs all 
 
     # return the averaged features 
-    return h #h_norm
+    return h_norm
 
 def eval_PETMAD(structures, atomsel):
     """
