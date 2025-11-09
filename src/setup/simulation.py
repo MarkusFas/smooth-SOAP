@@ -146,6 +146,20 @@ def run_simulation(trj, methods_intervals, **kwargs):
                 cs.save(method.label + '_cs.json')
                 print("saved chemiscope")
 
+            if kwargs["model_save"]:
+                for i, trans in enumerate(method.transformations):
+                    method.descriptor.set_atom_types(trj)
+                    if kwargs["ridge"] and kwargs["ridge_save"]:
+                        method.descriptor.set_projection_matrix(method.ridge[i].coef_.T)
+                    else:
+                        method.descriptor.set_projection_matrix(trans.eigvecs)
+                    method.descriptor.set_projection_dims(dims=kwargs['model_proj_dims'])
+                    method.descriptor.set_projection_mu(mu=trans.mu)
+                    method.descriptor.eval()   
+                    method.descriptor.save_model(path=method.root+f'/interval_{method.interval}/', name='model_soap')   
+                    print(f'saved model at {method.root}'+f'/interval_{method.interval}/')    
+
+
     if ("heatmap" in plots) and len(methods_intervals) >= 2:
         interval_0 = methods_intervals[0]
         interval_1 = methods_intervals[1]
@@ -158,15 +172,6 @@ def run_simulation(trj, methods_intervals, **kwargs):
             plot_heatmap(cov2_int0[i], cov2_int1[i], method.root + f'_spatial_interval{interval_0[0].interval}{interval_1[0].interval}_center{center}' + f'_{i}')
         print('Plotted heatmap')
  
-    if kwargs["model_save"]:
-        for trans in method.transformations:
-            method.descriptor.set_atom_types(trj)
-            method.descriptor.set_projection_matrix(trans.eigvecs)
-            method.descriptor.set_projection_dims(dims=kwargs['model_proj_dims'])
-            method.descriptor.set_projection_mu(mu=trans.mu)
-            method.descriptor.eval()   
-            method.descriptor.save_model(path=method.root+f'/interval_{method.interval}/', name='model_soap')   
-            print(f'saved model at {method.root}'+f'/interval_{method.interval}/')    
-
+    
 if __name__ == '__main__':
     print('Nothing to do here')
