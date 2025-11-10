@@ -42,7 +42,7 @@ if __name__ == "__main__":
     #input_file = 'systems/ice_water_sep/test_interval1.yaml'
     #input_file = 'systems/GeTe/test_interval1.yaml' 
 
-    
+
     #input_file = 'systems/cycloAE/test_interval_hf0.yaml'
     #input_file = 'systems/test_hannah/test_interval1.yaml'
     #input_file = 'systems/smallcell_interface_350/test_intervaltica.yaml'

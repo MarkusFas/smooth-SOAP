@@ -156,10 +156,11 @@ def run_simulation(trj, methods_intervals, **kwargs):
                     method.descriptor.set_projection_dims(dims=kwargs['model_proj_dims'])
                     method.descriptor.set_projection_mu(mu=trans.mu)
                     method.descriptor.eval()   
-                    method.descriptor.save_model(path=method.root+f'/interval_{method.interval}/', name='model_soap')   
-                    print(f'saved model at {method.root}'+f'/interval_{method.interval}/')    
-
-
+                    #method.descriptor.save_model(path=method.root+f'/interval_{method.interval}/', name='model_soap')   
+                    #print(f'saved model at {method.root}'+f'/interval_{method.interval}/')    
+                    method.descriptor.save_model(path=method.label, name='model_soap') 
+                    print(f'saved model at {method.label}')    
+                    
     if ("heatmap" in plots) and len(methods_intervals) >= 2:
         interval_0 = methods_intervals[0]
         interval_1 = methods_intervals[1]
