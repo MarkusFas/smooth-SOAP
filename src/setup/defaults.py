@@ -19,6 +19,7 @@ DEFAULT_PARAMS = {
         "indices": ":",
         "concatenate": True,
     },
+    
     "output_params": {
         "fname": None,
         "indices": ":",

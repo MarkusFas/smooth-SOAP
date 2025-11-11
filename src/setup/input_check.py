@@ -34,7 +34,7 @@ def check_file_input(**kwargs):
     return fnames, indices
 
 
-def check_analysis_inputs(trajs, **kwargs):
+def check_analysis_inputs(trajs, test_trajs, **kwargs):
     intervals = kwargs["interval"]
     if isinstance(intervals, int):
         #TODO if intervals > len(trajs)
@@ -87,7 +87,7 @@ def check_analysis_inputs(trajs, **kwargs):
     else:
         if not all(isinstance(x, int) for x in kwargs['test_selected_atoms']):
             raise TypeError("All elements of test_selected_atoms must be integers")
-        if not all(atoms_idx < len(traj[0]) for atoms_idx in kwargs['test_selected_atoms'] for traj in trajs):
+        if not all(atoms_idx < len(traj[0]) for atoms_idx in kwargs['test_selected_atoms'] for traj in test_trajs):
             raise ValueError(" Some of the selected atoms are not in the traj")
 
     if isinstance(kwargs['train_selected_atoms'], list) and isinstance(kwargs['test_selected_atoms'], list):
@@ -175,8 +175,8 @@ def setup_simulation(**kwargs):
         kwargs["output_params"]["concatenate"] = kwargs["input_params"]["concatenate"]
         test_trajs = None
     else:
-        fnames, indices = check_file_input(**kwargs["input_params"])
-        test_trajs = [read_trj(fname, indices[i]) for i, fname in enumerate(fnames)]
+        fnames_test, indices_test = check_file_input(**kwargs["output_params"])
+        test_trajs = [read_trj(fname, indices) for fname, indices in zip(fnames_test, indices_test)]
         if kwargs["input_params"].get('concatenate'):
             test_trajs = [list(chain(*test_trajs))]
         elif not kwargs["input_params"].get('concatenate'):
@@ -210,7 +210,7 @@ def setup_simulation(**kwargs):
         raise NotImplementedError(f"{descriptor} has not been implemented yet.")
     
     #3 Check Analysis
-    kwargs = check_analysis_inputs(trajs, **kwargs)
+    kwargs = check_analysis_inputs(trajs, test_trajs, **kwargs)
     
     opt_methods = kwargs.get('methods')  # list of methods
     implemented_opt = ['PCA', 'PCAfull', 'TICA','IVAC', 'TEMPPCA', 'PCAtest', "LDA", "SpatialPCA"]
