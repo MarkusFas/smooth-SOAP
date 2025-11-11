@@ -139,7 +139,3 @@ class SOAP_CV(torch.nn.Module):
         metadata = ModelMetadata(name="Collective Variable test")
         model = AtomisticModel(self, metadata, capabilities)
         model.save("{}/{}.pt".format(path,name), collect_extensions=f"{path}/extensions")
-
-
-
-

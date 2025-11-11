@@ -43,7 +43,7 @@ if __name__ == "__main__":
     #input_file = 'systems/GeTe/test_interval1.yaml' 
 
 
-    #input_file = 'systems/cycloAE/test_interval_hf0.yaml'
+    #input_file = 'systems/cycloAE/test_interval_hf1.yaml'
     #input_file = 'systems/test_hannah/test_interval1.yaml'
     #input_file = 'systems/smallcell_interface_350/test_intervaltica.yaml'
 
@@ -65,13 +65,13 @@ if __name__ == "__main__":
     user_cfg = load_config(input_file)
     params = merge_params(DEFAULT_PARAMS, user_cfg, input_file)
     setup_simulation(**params)
-    exit()
-    input_file = 'systems/smallcell_interface_350/test_intervalivac.yaml'
+ 
+    input_file = 'systems/cycloAE/test_interval_hf2.yaml'
     #input_file = 'systems/cycloAE/test_interval_hf1.yaml'
     user_cfg = load_config(input_file)
     params = merge_params(DEFAULT_PARAMS, user_cfg, input_file)
     setup_simulation(**params)
-
+    exit()
     input_file = 'systems/smallcell_interface_350/test_interval1_select_ice.yaml'
     user_cfg = load_config(input_file)
     params = merge_params(DEFAULT_PARAMS, user_cfg, input_file)

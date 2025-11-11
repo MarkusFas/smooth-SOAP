@@ -1,6 +1,6 @@
 import os
 import random
-
+import metatomic.torch as mta
 import numpy as np
 from tqdm import tqdm
 from pathlib import Path
@@ -11,11 +11,16 @@ from src.plots.timeseries import plot_projection_atoms, plot_projection_atoms_mo
 from src.plots.histograms import plot_2pca, plot_2pca_atoms, plot_2pca_height
 from src.classifier.Logreg import run_logistic_regression
 
-def run_simulation(trj, methods_intervals, **kwargs):
-    
+def run_simulation(trj, trj_test, methods_intervals, **kwargs):
+    if trj_test is None:
+        trj_test = trj
+
     if not isinstance(trj[0], list):
         trj = [trj]
-    
+
+    if not isinstance(trj_test[0], list):
+        trj_test = [trj_test]
+
     for i, methods in tqdm(enumerate(methods_intervals), desc="looping through intervals"):
         for j, method in tqdm(enumerate(methods), desc="looping through methods"):
             random.seed(7)
@@ -60,7 +65,7 @@ def run_simulation(trj, methods_intervals, **kwargs):
             # for prediction we can use the concatenated trajectories
 
 
-            trj_predict = list(chain(*trj))
+            trj_predict = list(chain(*trj_test))
             X = method.predict(trj_predict, test_atoms) ##centers N,T,P
             X = [proj.transpose(1,0,2) for proj in X]#centers T,N,P
 
@@ -159,7 +164,8 @@ def run_simulation(trj, methods_intervals, **kwargs):
                     #method.descriptor.save_model(path=method.root+f'/interval_{method.interval}/', name='model_soap')   
                     #print(f'saved model at {method.root}'+f'/interval_{method.interval}/')    
                     method.descriptor.save_model(path=method.label, name='model_soap') 
-                    print(f'saved model at {method.label}')    
+
+
                     
     if ("heatmap" in plots) and len(methods_intervals) >= 2:
         interval_0 = methods_intervals[0]

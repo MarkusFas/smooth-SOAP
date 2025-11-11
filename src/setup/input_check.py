@@ -161,14 +161,28 @@ def setup_simulation(**kwargs):
     #1 check trajectory
     fnames, indices = check_file_input(**kwargs["input_params"])
     trajs = [read_trj(fname, indices[i]) for i, fname in enumerate(fnames)]
-    positive_keys = ["true", "yes"]
-    negative_keys = ["false", "no"]
     if kwargs["input_params"].get('concatenate'):
         trajs = [list(chain(*trajs))]
     elif not kwargs["input_params"].get('concatenate'):
         pass
     else:
         raise TypeError('concatenate, needs to be either true or false')
+
+    # check the test data
+    if kwargs["input_params"]["fname"] is None:
+        kwargs["output_params"]["fname"] = kwargs["input_params"]["fname"]
+        kwargs["output_params"]["indices"] = kwargs["input_params"]["indices"]
+        kwargs["output_params"]["concatenate"] = kwargs["input_params"]["concatenate"]
+        test_trajs = None
+    else:
+        fnames, indices = check_file_input(**kwargs["input_params"])
+        test_trajs = [read_trj(fname, indices[i]) for i, fname in enumerate(fnames)]
+        if kwargs["input_params"].get('concatenate'):
+            test_trajs = [list(chain(*test_trajs))]
+        elif not kwargs["input_params"].get('concatenate'):
+            pass
+        else:
+            raise TypeError('concatenate, needs to be either true or false')
 
     #2 check descriptor
     descriptor_name = kwargs['descriptor']
@@ -260,4 +274,4 @@ def setup_simulation(**kwargs):
     print(kwargs["model_proj_dims"])
     print(kwargs['plots'])
     # Pass nested lists to run_simulation
-    run_simulation(trajs, methods_intervals, **kwargs)
+    run_simulation(trajs, test_trajs, methods_intervals, **kwargs)

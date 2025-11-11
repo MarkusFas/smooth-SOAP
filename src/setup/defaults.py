@@ -19,6 +19,11 @@ DEFAULT_PARAMS = {
         "indices": ":",
         "concatenate": True,
     },
+    "output_params": {
+        "fname": None,
+        "indices": ":",
+        "concatenate": True,
+    },
 
     "descriptor": "SOAP",
     "SOAP_params": {
