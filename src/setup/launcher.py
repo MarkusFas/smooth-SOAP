@@ -38,8 +38,8 @@ if __name__ == "__main__":
     #input_file = 'systems/icewater/test_interval1.yaml'
 
     #input_file = 'systems/smallcell_interface_350/test_intervaltemp.yaml'
-    #input_file = 'systems/smallcell_interface_350/test_interval_lf0.yaml'
-    input_file = 'systems/ice_water_sep/test_interval1.yaml'
+    input_file = 'systems/smallcell_interface_350/test_interval_lf0.yaml'
+    #input_file = 'systems/ice_water_sep/test_interval1.yaml'
     #input_file = 'systems/GeTe/test_interval1.yaml' 
 
 

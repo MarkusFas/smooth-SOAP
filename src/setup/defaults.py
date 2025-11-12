@@ -9,6 +9,7 @@ DEFAULT_PARAMS = {
     "min_lag": 100,
     "lag_step": 20,
     "sigma": 0,
+    "n_cumulants": 1,
     "methods": "PCA",
     "spatial_cutoff": 0,
     "train_selected_atoms": 1,
@@ -19,7 +20,7 @@ DEFAULT_PARAMS = {
         "indices": ":",
         "concatenate": True,
     },
-    
+
     "output_params": {
         "fname": None,
         "indices": ":",

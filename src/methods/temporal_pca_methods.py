@@ -17,7 +17,7 @@ from src.methods.BaseMethod import FullMethodBase
 class TempPCA(FullMethodBase):
 
     def __init__(self, descriptor, interval, ridge_alpha, root):
-        self.name = "TempPCA_nonorm"
+        self.name = "TempPCA"
         super().__init__(descriptor, interval, lag=0, root=root, sigma=0, ridge_alpha=ridge_alpha, method=self.name)
         
 
@@ -108,9 +108,9 @@ class TempPCA(FullMethodBase):
         self.mean_cov_t = mean_cov_t
         self.cov_mu_t = cov_mu_t
         
-        return mean_mu_t, cov_mu_t, [np.eye(cov.shape[0]) for cov in cov_mu_t]
+        #return mean_mu_t, cov_mu_t, [np.eye(cov.shape[0]) for cov in cov_mu_t]
 
-        #return mean_mu_t, cov_mu_t, mean_cov_t 
+        return mean_mu_t, cov_mu_t, mean_cov_t 
 
 
     def log_metrics(self):
