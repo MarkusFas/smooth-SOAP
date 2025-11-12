@@ -2,7 +2,5 @@ import random
 
 import numpy as np
 
-a = {1:'ok'}
-
-for i in range(4):
-    print(a.get(1, 'not found'))
+A = np.zeros((3,4,5))
+print(np.mean(A, axis=1).unsqueeze(1).shape)

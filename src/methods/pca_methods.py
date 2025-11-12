@@ -1222,8 +1222,8 @@ class CumulantPCA(FullMethodBase):
             projected = []
             for system in systems:
                 descriptor = self.descriptor.calculate([system])
-                descriptor = self.descriptor.compute_cumulants(descriptor, self.descriptor.n_cumulants)
-                descriptor_proj = trafo.project(descriptor)
+                cum_descriptor = self.descriptor.compute_cumulants(descriptor, self.n_cumulants)
+                descriptor_proj = trafo.project(cum_descriptor)
                 projected.append(descriptor_proj)
                 # TODO:
                 #self.ridge.fit(descriptor, descriptor_proj)
@@ -1335,4 +1335,14 @@ class CumulantPCA(FullMethodBase):
                 torch.tensor(trafo.eigvecs.copy()),
                 self.label + f"_center{self.descriptor.centers[i]}" + f"_eigvecs.pt",
             ) 
+
+            torch.save(
+                torch.tensor(self.cov1[i]),
+                self.label + f"_center{self.descriptor.centers[i]}" + f"_cov1.pt",
+            ) 
+
+            torch.save(
+                self.descriptor.soap_block.properties.values,
+                self.label + f"_center{self.descriptor.centers[i]}" + f"_properties.pt",
+            )
 

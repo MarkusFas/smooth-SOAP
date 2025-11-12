@@ -80,6 +80,8 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
                 X_ridge = method.predict_ridge(trj_predict, test_atoms)
                 X_ridge = [proj.transpose(1,0,2) for proj in X_ridge]
             
+            if kwargs["output_per_structure"]:
+                X = [np.mean(x, axis=1)[:, np.newaxis, :] for x in X]
 
             # label the trajectories:
             if kwargs['classify']['request']:
