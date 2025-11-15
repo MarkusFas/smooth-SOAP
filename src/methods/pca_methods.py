@@ -1345,4 +1345,3 @@ class CumulantPCA(FullMethodBase):
                 self.descriptor.soap_block.properties.values,
                 self.label + f"_center{self.descriptor.centers[i]}" + f"_properties.pt",
             )
-

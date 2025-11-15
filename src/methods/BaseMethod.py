@@ -146,7 +146,7 @@ class FullMethodBase(ABC):
         systems = systems_to_torch(traj, dtype=torch.float64)
         soap_block = self.descriptor.calculate(systems[:1], selected_samples=self.descriptor.selected_samples)
         print(soap_block.shape)
-        first_soap =  soap_block  
+        first_soap = soap_block  
         buffer = np.zeros((first_soap.shape[0], self.interval, first_soap.shape[1]))
         
         delta=np.zeros(self.interval)

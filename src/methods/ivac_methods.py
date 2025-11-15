@@ -744,3 +744,206 @@ class TIVAC(FullMethodBase):
                 self.label + f"_center{self.descriptor.centers[i]}" + f"_eigvecs.pt",
             ) 
 
+
+
+class CumulantIVAC(FullMethodBase):
+
+
+    def __init__(self, descriptor, interval, max_lag, min_lag, lag_step, ridge_alpha, n_cumulants, root):
+        self.name = 'CumulantIVAC'
+        self.max_lag = max_lag
+        self.min_lag = min_lag
+        self.lag_step = lag_step
+        self.n_cumulants = n_cumulants
+        super().__init__(descriptor, interval, lag='ivac', root=root, sigma=0, ridge_alpha=ridge_alpha, method=self.name)
+
+
+    def predict(self, traj, selected_atoms):
+        """
+        Project new trajectory frames into the trained collective variable (CV) space.
+
+        Parameters
+        ----------
+        traj : list[ase.Atoms]
+            Trajectory to project.
+        selected_atoms : list[int]
+            Indices of atoms to project.
+
+        Returns
+        -------
+        np.ndarray, shape (n_atoms, n_frames, n_components)
+            Projected low-dimensional representation.
+        """
+        if self.transformations is None:
+            raise RuntimeError("Call train() before predict().")
+
+        self.selected_atoms = selected_atoms
+        self.descriptor.set_samples(selected_atoms)
+        systems = systems_to_torch(traj, dtype=torch.float64)
+
+        projected_per_type = []
+
+        for trafo in self.transformations:
+            projected = []
+            for system in systems:
+                descriptor = self.descriptor.calculate([system])
+                cum_descriptor = self.descriptor.compute_cumulants(descriptor, self.n_cumulants)
+                descriptor_proj = trafo.project(cum_descriptor)
+                projected.append(descriptor_proj)
+                # TODO:
+                #self.ridge.fit(descriptor, descriptor_proj)
+            projected_per_type.append(np.stack(projected, axis=0).transpose(1, 0, 2))
+
+        return projected_per_type  # shape: (#centers ,N_atoms, T, latent_dim)
+    
+
+    def compute_COV(self, traj):
+        """
+        Compute time-averaged SOAP covariance matrices for each atomic species.
+
+        This method computes the temporal and ensemble covariance of SOAP 
+        descriptors for different atomic species over a molecular dynamics 
+        trajectory. It uses a Gaussian kernel to smooth SOAP vectors in time 
+        and separates intra-atomic (within-atom) and inter-atomic (between-atoms)
+        covariance contributions.
+
+        Parameters
+        ----------
+        traj : ase.io.Trajectory or list of ase.Atoms
+            Molecular dynamics trajectory containing atomic configurations 
+            for which the SOAP descriptors are computed.
+
+        Returns
+        -------
+        mean_mu_t : np.ndarray, shape (n_species, n_features)
+            Time-averaged mean SOAP vector for each atomic species.
+        mean_cov_t : np.ndarray, shape (n_species, n_features, n_features)
+            Mean covariance of SOAP descriptors across all timesteps and atoms 
+            of a given species.
+        cov_mu_t : np.ndarray, shape (n_species, n_features, n_features)
+            Temporal covariance of SOAP descriptor means (fluctuations in time).
+        """
+        systems = systems_to_torch(traj, dtype=torch.float64)
+        soap_block = self.descriptor.calculate(systems[:1])
+        first_soap = self.descriptor.compute_cumulants(soap_block, self.n_cumulants)
+        self.atomsel_element = [[0] for atom_type in self.descriptor.centers]
+        if soap_block.shape[0] == 1:
+            self.atomsel_element = [[0] for atom_type in self.descriptor.centers]
+        buffer = np.zeros((first_soap.shape[0], self.interval, first_soap.shape[1]))
+        buffer_t = np.zeros((first_soap.shape[0], self.max_lag+1, first_soap.shape[1]))
+        cov_t = np.zeros((len(self.atomsel_element), first_soap.shape[1], first_soap.shape[1],))
+        corr_t = np.zeros((len(self.atomsel_element), first_soap.shape[1], first_soap.shape[1],))
+        sum_soaps = np.zeros((len(self.atomsel_element),first_soap.shape[1],))
+        sum_soaps_corr = np.zeros((len(self.atomsel_element),first_soap.shape[1],))
+        nsmp = np.zeros(len(self.atomsel_element))
+        nsmp_corr = np.zeros(len(self.atomsel_element))
+        delta = np.zeros(self.interval)
+        delta[self.interval//2] = 1
+        kernel = gaussian_filter(delta,sigma=(self.interval-1)//(2)) # cutoff at 3 sigma, leaves 0.1%
+        kernel /= kernel.sum()
+
+        lags = np.arange(self.min_lag, self.max_lag + self.lag_step, self.lag_step)
+        
+        for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Computing SOAPs"):
+            new_soap_values = self.descriptor.calculate([system])
+            cum_soap_values = self.descriptor.compute_cumulants(new_soap_values, self.n_cumulants)
+            new_soap_values = None
+            #cumulant
+            buffer[:,fidx%self.interval,:] = cum_soap_values
+            if fidx >= self.interval-1:
+                # computes a contribution to the correlation function
+                # the buffer contains data from fidx-maxlag to fidx. add a forward ACF
+                roll_kernel = np.roll(kernel, (fidx+1)%self.interval)
+                avg_soap = np.einsum("j,ija->ia", roll_kernel, buffer) #smoothen
+                #avg_soap = self.spatial_averaging(system, avg_soap, self.sigma)
+                buffer_t[:,fidx%(self.max_lag+1),:] = avg_soap
+
+            for i, lag in enumerate(lags):
+                if fidx >= self.interval + lag - 1:
+
+                    # computes a contribution to the correlation function
+                    # the buffer contains data from fidx-maxlag to fidx. add a forward ACF
+                    soap_0 = buffer_t[:,fidx%(self.max_lag + 1),:]
+                    soap_lag = buffer_t[:,(fidx-lag)%(self.max_lag + 1),:]
+                    #soap_lags = [buffer_t[:,(fidx-lag)%(self.max_lag + 1),:] for lag in lags]
+                    for atom_type_idx, atom_type in enumerate(self.atomsel_element):
+                        # C0
+                        #delta_soap_0 = soap_0[atom_type] - soap_mu[atom_type_idx] 
+                        sum_soaps[atom_type_idx] += soap_0[atom_type].sum(axis=0)
+                        cov_t[atom_type_idx] += np.einsum("ia,ib->ab", soap_0[atom_type], soap_0[atom_type])# Ctau
+                        #delta_soap_lag = soap_lag[atom_type] - soap_mu[atom_type_idx]
+                        sum_soaps[atom_type_idx] += soap_lag[atom_type].sum(axis=0)
+                        cov_t[atom_type_idx] += np.einsum("ia,ib->ab", soap_lag[atom_type], soap_lag[atom_type])
+                        #cov_t[atom_type_idx] += np.einsum("ia,ib->ab", delta_soap_lag, delta_soap_lag) #sum over all same atoms (have already summed over all times before)
+                        #corr_t[atom_type_idx] += np.einsum("ia,ib->ab", delta_soap_lag, delta_soap_0)
+                        corr_t[atom_type_idx] += np.einsum("ia,ib->ab", soap_0[atom_type], soap_lag[atom_type])
+                        #nsmp[atom_type_idx] += (len(soap_lags) + 1)*len(atom_type)
+                        nsmp[atom_type_idx] += 2 * len(atom_type)
+                        nsmp_corr[atom_type_idx] += len(atom_type)
+                        #ntimesteps_corr[atom_type_idx] += 1
+                        #sum_soaps_corr[atom_type_idx] += soap_0[atom_type].sum(axis=0)
+                        #delta_soap_0 = soap_0[atom_type] - soap_0_mu[atom_type_idx] 
+                        
+                        #soap_0_mu[atom_type_idx] += delta_soap_0.mean(axis=0) / ntimesteps_corr[atom_type_idx]
+                        #TODO: test for only one
+                        #for i, soap_lag in enumerate(soap_lags):
+                            #delta_soap_lag[i] = soap_lag[atom_type] - soap_lag_mu[atom_type_idx, i]
+                        #   delta_soap_lag[i] = soap_lag[atom_type] - soap_mu[atom_type_idx]
+                            #soap_lag_mu[atom_type_idx, i] += delta_soap_lag[i].mean(axis=0) / ntimesteps_corr[atom_type_idx]
+                            #sum over all same atoms (have already summed over all times before) 
+
+
+        mu = np.zeros((len(self.atomsel_element), cum_soap_values.shape[1]))
+        cov = np.zeros((len(self.atomsel_element), cum_soap_values.shape[1], cum_soap_values.shape[1]))
+        #mu_corr = np.zeros((len(self.atomsel_element), new_soap_values.shape[1]))
+        corr = np.zeros((len(self.atomsel_element), cum_soap_values.shape[1], cum_soap_values.shape[1]))
+        
+        # autocorrelation matrix - remove mean
+        for atom_type_idx, atom_type in enumerate(self.atomsel_element):
+            mu[atom_type_idx] = sum_soaps[atom_type_idx]/nsmp[atom_type_idx]
+            # COV = 1/N ExxT - mumuT
+            cov[atom_type_idx] = cov_t[atom_type_idx]/nsmp[atom_type_idx] - np.einsum('i,j->ij', mu[atom_type_idx], mu[atom_type_idx])
+            
+            #mu_corr[atom_type_idx] = sum_soaps_corr[atom_type_idx]/nsmp_corr[atom_type_idx]
+            # COV = 1/N ExxT - mumuT
+            corr[atom_type_idx] = corr_t[atom_type_idx]/(nsmp_corr[atom_type_idx]) - np.einsum('i,j->ij', mu[atom_type_idx], mu[atom_type_idx])
+        
+        self.cov = cov
+        self.corr = corr
+        self.mu = mu #soap_mu
+        #self.mu_corr = mu_corr
+        #return soap_lag_mu.mean(axis=1), corr, cov
+        return mu, corr, cov
+        #return soap_mu, corr, [np.eye(c.shape[0]) for c in corr]
+
+    def log_metrics(self):
+        """
+        Log metrics from the run, including the covariances.
+
+        
+        Returns
+        -------
+        empty
+        """
+
+        for i, trafo in enumerate(self.transformations):
+            torch.save(
+                torch.tensor(trafo.eigvals.copy()),
+                self.label + f"_center{self.descriptor.centers[i]}" + f"_eigvals.pt",
+            )
+
+            torch.save(
+                torch.tensor(trafo.eigvecs.copy()),
+                self.label + f"_center{self.descriptor.centers[i]}" + f"_eigvecs.pt",
+            ) 
+
+            torch.save(
+                torch.tensor(self.cov1[i]),
+                self.label + f"_center{self.descriptor.centers[i]}" + f"_cov1.pt",
+            ) 
+
+            torch.save(
+                self.descriptor.soap_block.properties.values,
+                self.label + f"_center{self.descriptor.centers[i]}" + f"_properties.pt",
+            )
+

@@ -113,7 +113,8 @@ class SOAP_descriptor():
             if n_cumulants > 3:
                 c[3] = mu[3] - 3 * mu[1]**2  # 4th cumulant (kurtosis-related)
             # higher orders could follow recursion, but are rarely stable
-            
+            if n_cumulants > 4:
+                c[4] = mu[4] - 10 * mu[1] * mu[2]
             # Broadcast cumulant values to N samples
             cumulant_matrix.append(np.tile(c, (N, 1)))
         
