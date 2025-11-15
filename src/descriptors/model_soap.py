@@ -248,8 +248,8 @@ class CumulantSOAP_CV(torch.nn.Module):
         if "features" not in outputs:
             return {}
 
-        if not outputs["features"].per_atom:
-            raise ValueError("per_atom=False is not supported")
+        if outputs["features"].per_atom:
+            raise ValueError("per_atom=True is not supported")
 
         if len(systems[0]) == 0:
             # PLUMED is trying to determine the size of the output
@@ -307,7 +307,7 @@ class CumulantSOAP_CV(torch.nn.Module):
 
     def save_model(self, path='.', name='soap_model'):
         capabilities = ModelCapabilities(
-            outputs={"features": ModelOutput(per_atom=True)},
+            outputs={"features": ModelOutput(per_atom=False)},
             interaction_range=10.0,
             supported_devices=["cpu"],
             length_unit="A",
