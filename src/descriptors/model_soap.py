@@ -262,7 +262,7 @@ class CumulantSOAP_CV(torch.nn.Module):
 
             soap_block = soap.block()
             
-            self.compute_cumulants_fwd(self, soap_block.values, 3) # ATTENTION HARD CODED 3 
+            self.compute_cumulants_fwd(soap_block.values, 3) # ATTENTION HARD CODED 3 
             projected = torch.einsum('ij,jk->ik',(soap_block.values - self.mu), self.projection_matrix[:,self.proj_dims])#, dtype=torch.float64)
 
             samples = soap_block.samples.remove("center_type")
@@ -315,18 +315,26 @@ class CumulantSOAP_CV(torch.nn.Module):
         model.save("{}/{}.pt".format(path,name), collect_extensions=f"{path}/extensions")
 
 
-    def compute_cumulants_fwd(self, X, n_cumulants):
+    def compute_cumulants_fwd(self, X: torch.Tensor, n_cumulants: int) -> torch.Tensor:
         """
-        X: (N, P) torch.Tensor
-        returns: (N, P * n_cumulants) torch.Tensor
-        """
+        TorchScript-friendly computation of cumulants.
 
-        # Ensure float tensor
+        X: (N, P) tensor
+        n_cumulants: number of cumulants per feature
+        returns: (N, P * n_cumulants) tensor
+        """
+        # ensure float
         X = X.float()
-        N, P = X.shape
+        N, P = X.shape  # Python ints
 
-        cumulant_blocks = []
+        # Preallocate output
+        out = torch.empty((N, P * n_cumulants), dtype=X.dtype, device=X.device)
 
+        # Temporary tensors reused per feature
+        moments = torch.empty((n_cumulants,), dtype=X.dtype, device=X.device)
+        c = torch.empty((n_cumulants,), dtype=X.dtype, device=X.device)
+
+        jbase = 0
         for j in range(P):
             x = X[:, j]
 
@@ -334,44 +342,47 @@ class CumulantSOAP_CV(torch.nn.Module):
             m = torch.mean(x)
             centered = x - m
 
-            # central moments μ_k = E[(x - mean)^k]
-            moments = torch.stack([
-                torch.mean(centered ** k) for k in range(1, n_cumulants + 1)
-            ])  # shape: (n_cumulants,)
+            # compute central moments μ_k = mean((x - m)^k) for k=1..n_cumulants
+            k = 1
+            while k <= n_cumulants:
+                moments[k - 1] = torch.mean(centered ** k)
+                k += 1
 
-            # allocate cumulant vector c_k
-            c = torch.zeros(n_cumulants, dtype=X.dtype, device=X.device)
-
+            # fill cumulant vector c
             # 1st cumulant = mean
             c[0] = m
 
-            # 2nd cumulant = variance
+            # 2nd cumulant = variance (μ2)
             if n_cumulants > 1:
                 c[1] = moments[1 - 1]  # μ2
 
-            # 3rd cumulant = third central moment
+            # 3rd cumulant = μ3
             if n_cumulants > 2:
                 c[2] = moments[2 - 1]  # μ3
 
             # 4th cumulant = μ4 − 3 μ2²
             if n_cumulants > 3:
-                μ2 = moments[1]
-                μ4 = moments[3 - 1]
-                c[3] = μ4 - 3 * μ2**2
+                mu2 = moments[1]
+                mu4 = moments[3 - 1]
+                c[3] = mu4 - 3.0 * (mu2 * mu2)
 
             # 5th cumulant = μ5 − 10 μ2 μ3
             if n_cumulants > 4:
-                μ2 = moments[1]
-                μ3 = moments[2]
-                μ5 = moments[5 - 1]
-                c[4] = μ5 - 10 * μ2 * μ3
+                mu2 = moments[1]
+                mu3 = moments[2]
+                mu5 = moments[5 - 1]
+                c[4] = mu5 - 10.0 * mu2 * mu3
 
-            # replicate cumulant vector N times → (N, n_cumulants)
-            block = c.unsqueeze(0).repeat(N, 1)
-            cumulant_blocks.append(block)
+            # broadcast c to N rows without extra Python list
+            # c_row: (1, n_cumulants) then expanded to (N, n_cumulants)
+            c_row = c.unsqueeze(0).expand(N, n_cumulants)  # no new allocation for repeated view
 
-        # Concatenate over features → (N, P * n_cumulants)
-        return torch.cat(cumulant_blocks, dim=1)
+            # write into output slice
+            out[:, jbase:jbase + n_cumulants] = c_row
+
+            jbase += n_cumulants
+
+        return out
 
 
     def compute_cumulants(self, X, n_cumulants):
