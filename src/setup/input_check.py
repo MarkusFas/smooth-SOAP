@@ -4,7 +4,7 @@ from ase.io.trajectory import Trajectory
 from itertools import chain
 import warnings
 from src.descriptors.SOAP import SOAP_descriptor_special
-from  src.descriptors.model_soap import SOAP_CV
+from  src.descriptors.model_soap import SOAP_CV, CumulantSOAP_CV
 from src.methods import PCA, IVAC, TICA, TILDA, TempPCA, PCAfull, PCAtest, LDA, SpatialPCA, SpatialTempPCA, ScikitPCA, CumulantPCA, CumulantIVAC
 from src.setup.simulation import run_simulation
 from src.setup.simulation_test import run_simulation_test
@@ -203,8 +203,8 @@ def setup_simulation(**kwargs):
         SOAP_max_angular = SOAP_kwargs.get('max_angular')
         SOAP_max_radial = SOAP_kwargs.get('max_radial')
         descriptor_id = f"{SOAP_cutoff}{SOAP_max_angular}{SOAP_max_radial}"
-        
         descriptor = SOAP_CV(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors)
+        
     elif descriptor_name == 'SOAP_atom':
         SOAP_kwargs = check_SOAP_inputs(trajs, **kwargs["SOAP_params"])
         centers = SOAP_kwargs.get('centers')
@@ -271,11 +271,13 @@ def setup_simulation(**kwargs):
                                 elif method.upper() == 'SCIKITPCA':
                                     method_obj = ScikitPCA(descriptor, interval, ridge_alpha, run_dir)
                                 elif method.upper() == 'CUMULANTPCA':
+                                    descriptor = CumulantSOAP_CV(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors)
                                     method_obj = CumulantPCA(descriptor, interval, ridge_alpha, n_cumulants, run_dir)
                                 elif method.upper() == 'CUMULANTIVAC':
                                     max_lag = kwargs.get("max_lag")
                                     min_lag = kwargs.get("min_lag")
                                     lag_step = kwargs.get("lag_step")
+                                    descriptor = CumulantSOAP_CV(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors)
                                     method_obj = CumulantIVAC(descriptor, interval, max_lag, min_lag, lag_step, ridge_alpha, n_cumulants, run_dir)
                                 else:
                                     raise NotImplementedError(f"Method must be one of {implemented_opt}, got {method}")
