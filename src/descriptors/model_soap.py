@@ -255,6 +255,8 @@ class CumulantSOAP_CV(torch.nn.Module):
             # PLUMED is trying to determine the size of the output
             projected = torch.zeros((0,1), dtype=torch.float64)
             samples = Labels(["system", "atom"], torch.zeros((0, 2), dtype=torch.int32))
+            properties = Labels("soap_pca", torch.tensor(self.proj_dims, dtype=torch.int).unsqueeze(-1))
+            
         else:
             soap = self.calculator(systems, selected_samples=selected_atoms, selected_keys=self.selected_keys)
             soap = soap.keys_to_samples("center_type")
@@ -266,14 +268,17 @@ class CumulantSOAP_CV(torch.nn.Module):
             projected = torch.einsum('ij,jk->ik',(X - self.mu), self.projection_matrix[:,self.proj_dims])#, dtype=torch.float64)
 
             #samples = soap_block.samples.remove("center_type")
-            samples = Labels("_", torch.tensor([[0]]))
+            samples = Labels(["system", "atom"], torch.zeros((1, 2), dtype=torch.int32))
+            properties = Labels("soap_pca", torch.tensor(self.proj_dims, dtype=torch.int).unsqueeze(-1))
+            #print(self.proj_dims)
+
         block = TensorBlock(
             values=projected,
             samples=samples,
             components=[],
             #properties=Labels("soap_pca", torch.tensor([[0]])),
             #properties=Labels("soap_pca", torch.tensor([[0], [1]])),
-            properties=Labels("soap_pca", torch.tensor(self.proj_dims, dtype=torch.int).unsqueeze(-1)),
+            properties=properties,
         )
         cv = TensorMap(
             keys=Labels("_", torch.tensor([[0]])),
@@ -328,7 +333,7 @@ class CumulantSOAP_CV(torch.nn.Module):
         N, P = X.shape  # Python ints
 
         # Preallocate output
-        out = torch.empty((N, P * n_cumulants), dtype=X.dtype, device=X.device)
+        out = torch.empty((1, P * n_cumulants), dtype=X.dtype, device=X.device)
 
         # Temporary tensors reused per feature
         moments = torch.empty((n_cumulants,), dtype=X.dtype, device=X.device)
