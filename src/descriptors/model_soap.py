@@ -262,11 +262,11 @@ class CumulantSOAP_CV(torch.nn.Module):
 
             soap_block = soap.block()
             
-            self.compute_cumulants_fwd(soap_block.values, 3) # ATTENTION HARD CODED 3 
-            projected = torch.einsum('ij,jk->ik',(soap_block.values - self.mu), self.projection_matrix[:,self.proj_dims])#, dtype=torch.float64)
+            X = self.compute_cumulants_fwd(soap_block.values, 3) # ATTENTION HARD CODED 3 
+            projected = torch.einsum('ij,jk->ik',(X - self.mu), self.projection_matrix[:,self.proj_dims])#, dtype=torch.float64)
 
-            samples = soap_block.samples.remove("center_type")
-
+            #samples = soap_block.samples.remove("center_type")
+            samples = Labels("_", torch.tensor([[0]]))
         block = TensorBlock(
             values=projected,
             samples=samples,
@@ -374,8 +374,8 @@ class CumulantSOAP_CV(torch.nn.Module):
                 c[4] = mu5 - 10.0 * mu2 * mu3
 
             # broadcast c to N rows without extra Python list
-            # c_row: (1, n_cumulants) then expanded to (N, n_cumulants)
-            c_row = c.unsqueeze(0).expand(N, n_cumulants)  # no new allocation for repeated view
+            # c_row: (1, n_cumulants) then DONT expanded to (N, n_cumulants)
+            c_row = c.unsqueeze(0)  # .expand(N, n_cumulants)
 
             # write into output slice
             out[:, jbase:jbase + n_cumulants] = c_row
@@ -427,6 +427,8 @@ class CumulantSOAP_CV(torch.nn.Module):
             if n_cumulants > 4:
                 c[4] = mu[4] - 10 * mu[1] * mu[2]
             # Broadcast cumulant values to N samples
+            # still tiling in order to get the right shape, for saving memory we can just set N=1
+            # as we output per structure and anyway average over the values later..
             cumulant_matrix.append(np.tile(c, (N, 1)))
         
         # Concatenate all cumulant blocks for each feature
