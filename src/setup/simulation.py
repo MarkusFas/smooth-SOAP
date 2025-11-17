@@ -74,7 +74,8 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
                 print('fit ridge 1')
   
                 #print('fit ridge 2')
-                method.fit_ridge_nonincremental(trj[0])
+                trj_ridge = list(chain(*trj))
+                method.fit_ridge_nonincremental(trj_ridge)
 
                 #X_ridge = method.predict_ridge(trj[0], train_atoms)
                 X_ridge = method.predict_ridge(trj_predict, test_atoms)
