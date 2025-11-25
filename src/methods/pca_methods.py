@@ -1231,6 +1231,28 @@ class CumulantPCA(FullMethodBase):
 
         return projected_per_type  # shape: (#centers ,N_atoms, T, latent_dim)
     
+    
+    def predict_ridge(self, traj, selected_atoms):
+        self.selected_atoms = selected_atoms
+        self.descriptor.set_samples(selected_atoms)
+        systems = systems_to_torch(traj, dtype=torch.float64)
+       
+        projected_per_type = []
+
+        for idx, trafo in enumerate(self.transformations):
+            projected = []
+            for system in systems:
+                descriptor = self.descriptor.calculate([system])
+                cum_descriptor = self.descriptor.compute_cumulants(descriptor, self.n_cumulants)
+            
+                ridge_pred = self.ridge[idx].predict(cum_descriptor)
+                projected.append(ridge_pred)
+               
+            projected_per_type.append(np.stack(projected, axis=0).transpose(1, 0, 2))
+
+        return projected_per_type
+        
+
 
     def compute_COV(self, traj):
         """
@@ -1303,6 +1325,55 @@ class CumulantPCA(FullMethodBase):
         self.cov_tot = cov
         return mu, cov, [np.eye(c.shape[0]) for c in cov]
 
+
+    def fit_ridge_nonincremental(self, traj):
+        systems = systems_to_torch(traj, dtype=torch.float64)
+        soap_block = self.descriptor.calculate(systems[:1], selected_samples=self.descriptor.selected_samples)
+        print(soap_block.shape)
+        first_soap = self.descriptor.compute_cumulants(soap_block, self.n_cumulants)
+        buffer = np.zeros((first_soap.shape[0], self.interval, first_soap.shape[1]))
+        
+        delta=np.zeros(self.interval)
+        delta[self.interval//2]=1
+        kernel=gaussian_filter(delta,sigma=(self.interval-1)//(2)) # cutoff at 3 sigma, leaves 0.1%
+        kernel /= kernel.sum() #kernel = delta
+        self.ridge = {}
+
+
+        for idx, trafo in enumerate(self.transformations):
+            self.ridge[idx] = Ridge(alpha=self.ridge_alpha, fit_intercept=False)
+            avg_soap_proj = trafo.project(first_soap) 
+            print('avg_soap_proj',avg_soap_proj.shape)
+            soap_values=np.zeros((first_soap.shape[0],len(systems)-self.interval, first_soap.shape[1]))
+            avg_soaps_projs=np.zeros((first_soap.shape[0],len(systems)-self.interval, avg_soap_proj.shape[-1]))
+            for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Fit Ridge"):
+                new_soap_values = self.descriptor.calculate([system], selected_samples=self.descriptor.selected_samples)
+                cum_soap_values = self.descriptor.compute_cumulants(new_soap_values, self.n_cumulants)
+                new_soap_values = None
+                if fidx >= self.interval:
+                    roll_kernel = np.roll(kernel, fidx%self.interval)
+                    # computes a contribution to the correlation function
+                    # the buffer contains data from fidx-maxlag to fidx. add a forward ACF
+                    avg_soap = np.einsum("j,ija->ia", roll_kernel, buffer) #smoothen
+                    avg_soap_proj = trafo.project(avg_soap)
+                    #print('projshape', avg_soap_proj.shape)
+                    #print('nonprog.shape',new_soap_values.shape)
+                    soap_values[:,fidx-self.interval,:] = cum_soap_values
+                    avg_soaps_projs[:,fidx-self.interval,:] = avg_soap_proj
+                buffer[:,fidx%self.interval,:] = cum_soap_values
+            print('soapvals',soap_values.dtype)
+            print('soapvals',soap_values.shape)
+            print('avg_soaps_proj',avg_soaps_projs.shape)
+            #soap_values=soap_values.reshape((soap_values.shape[0]*soap_values.shape[1],soap_values.shape[2]))
+            #avg_soaps_projs=avg_soaps_projs.reshape((avg_soaps_projs[0]*avg_soaps_projs[1],avg_soaps_projs.shape[2]))
+            soap_values=soap_values.reshape(soap_values.shape[0]*soap_values.shape[1],soap_values.shape[2])
+            avg_soaps_projs=avg_soaps_projs.reshape(avg_soaps_projs.shape[0]*avg_soaps_projs.shape[1],avg_soaps_projs.shape[2])
+            #np.reshape(avg_soaps_projs.soap_values,(avg_soaps_projs.shape[0]*avg_soaps_projs.shape[1],avg_soaps_projs.shape[2]))
+            #p.reshape(avg_soaps_projs,(avg_soaps_projs[0]*avg_soaps_projs[1],avg_soaps_projs.shape[2]))
+            print('soapvals',soap_values.shape)
+            print('avg_soaps_proj',avg_soaps_projs.shape)
+            self.ridge[idx].fit(soap_values, avg_soaps_projs)
+      
 
     def log_metrics(self):
         """

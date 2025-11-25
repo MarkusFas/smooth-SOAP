@@ -47,6 +47,8 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
                     test_atoms = selected_atoms[-N_test:] # single atom case
             else:
                 test_atoms = N_test
+            if test_atoms is None:
+                test_atoms = train_atoms
             print('Ntrain, Ntest: ', N_train, N_test)
             print('Train atoms: {}'.format(train_atoms))        
             print('Test atoms: {}'.format(test_atoms))        

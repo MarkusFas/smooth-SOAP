@@ -13,7 +13,7 @@ DEFAULT_PARAMS = {
     "methods": "PCA",
     "spatial_cutoff": 0,
     "train_selected_atoms": 1,
-    "test_selected_atoms": 1,
+    "test_selected_atoms": None,
 
     "input_params": {
         "fname": None,

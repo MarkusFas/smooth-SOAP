@@ -1,35 +1,31 @@
 # systems/icewater/test.yaml
 
-system: ice-water-sep-lf_100fsdump
-specifier: EVAL_interfacetransition_ #new_oconcat_withwrap
+system: icewaterinterfacemeltfast_lf
+specifier: per_structure_ncum1
 interval: 
   - 1
-  - 100
 
+n_cumulants: 1
 sigma: 
   - 5
 spatial_cutoff: 
   - 6
-  
+  #- 6
+  #- 7
 #lag: 0
-#max_lag: 300
-#min_lag: 10
-#lag_step: 55
-train_selected_atoms: 30
-test_selected_atoms: [705, 522, 699, 696, 693, 690, 513, 684, 540, 678, 570, 672, 669, 666, 591, 600]
+lag: 100
+max_lag: 400
+min_lag: 10
+lag_step: 50
+train_selected_atoms: 20
+test_selected_atoms: [705, 522, 699, 696, 693, 690, 513, 684, 540, 678, 570, 672, 669, 666, 591, 600] #only ice
+#test_selected_atoms: 50
 methods: 
-  - PCA
-  - TempPCA
-
+  - CumulantPCA
+  #- SpatialPCA
+  #- TICA
 
 input_params:
-  fname: 
-    - /Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/ice_water_separate_trj/250/ice.lammpstrj
-    - /Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/ice_water_separate_trj/250/water.lammpstrj
-  indices: ':' #100fs dump
-  concatenate: false
-
-output_params:
   fname: 
     - /Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/interfaces/250_275_fast/positions.lammpstrj
     #/Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/interfaces/250_275_fast/positions.lammpstrj
@@ -40,6 +36,10 @@ output_params:
     #- '-1000:'
   #concatenate: False
 
+ridge: false
+ridge_alpha: 
+  - 1e-5
+ridge_save: true
 SOAP_params:
   centers: [8]
   neighbors: [1,8]
@@ -47,10 +47,6 @@ SOAP_params:
   max_angular: 3
   max_radial: 3
 
-ridge: false
-ridge_alpha: 1e-5
-
-classify: 
-  request: False
-
-plots: ["projection", "pca"]
+#output_per_structure: true
+#model_save: True
+plots: ["projection", "pca", "pca_atoms", "pca_height"]

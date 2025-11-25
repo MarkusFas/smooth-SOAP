@@ -1,26 +1,31 @@
 # systems/icewater/test.yaml
 
 system: gete
-specifier: tempcov-compareold-otheratoms-eigh-10
-interval: 1
+specifier: double
+interval: 
+  - 1
+
+n_cumulants: 5
 lag: 0
-train_selected_atoms: 30
-test_selected_atoms: 20
+train_selected_atoms: 25
+test_selected_atoms: 25
 methods: 
-  - TempPCA
-  - PCAfull
+  - CumulantPCA
+
 
 input_params:
   fname: 
     - /Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/gete/ramp_up.pos_0.extxyz
     - /Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/gete/ramp_down.pos_0.extxyz
-  indices: ':'
+  indices: '::4'
+  concatenate: True
 
+ridge: false
 SOAP_params:
   centers: [52]
   neighbors: [32,52]
-  cutoff: 6
-  max_angular: 5
-  max_radial: 6
+  cutoff: 4
+  max_angular: 4
+  max_radial: 4
 
-plots: ["projection", "histogram"]
+plots: ["projection", "pca"]

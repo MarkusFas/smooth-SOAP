@@ -1,4 +1,4 @@
-import torch 
+import torch
 import metatensor.torch as mts
 from metatomic.torch import System, ModelEvaluationOptions, ModelOutput, systems_to_torch, load_atomistic_model
 from metatensor.torch import Labels, TensorBlock, mean_over_samples

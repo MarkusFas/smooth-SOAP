@@ -2,7 +2,7 @@ from .pca_methods import PCA, PCAfull, PCAtest, SpatialPCA, SpatialTempPCA, Scik
 from .temporal_pca_methods import TempPCA
 from .ivac_methods import TICA, IVAC, TILDA, CumulantIVAC
 from .LDAMethod import LDA
-
+from .distinct_methods import DistinctPCA
 __all__ = [
     "PCA", 
     "TempPCA", 
@@ -16,4 +16,5 @@ __all__ = [
     "ScikitPCA",
     "CumulantPCA",
     "CumulantIVAC",
+    "DistinctPCA"
 ]

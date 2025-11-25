@@ -5,7 +5,7 @@ from itertools import chain
 import warnings
 from src.descriptors.SOAP import SOAP_descriptor_special
 from  src.descriptors.model_soap import SOAP_CV, CumulantSOAP_CV
-from src.methods import PCA, IVAC, TICA, TILDA, TempPCA, PCAfull, PCAtest, LDA, SpatialPCA, SpatialTempPCA, ScikitPCA, CumulantPCA, CumulantIVAC
+from src.methods import PCA, IVAC, TICA, TILDA, TempPCA, PCAfull, PCAtest, LDA, SpatialPCA, SpatialTempPCA, ScikitPCA, CumulantPCA, CumulantIVAC, DistinctPCA
 from src.setup.simulation import run_simulation
 from src.setup.simulation_test import run_simulation_test
 from src.setup.read_data import read_trj
@@ -92,7 +92,8 @@ def check_analysis_inputs(trajs, test_trajs, **kwargs):
 
     if not isinstance(kwargs['test_selected_atoms'], list):
         if not isinstance(kwargs['test_selected_atoms'], int):
-            raise TypeError("test_selected_atoms must be integer or list of integers")
+            if kwargs['test_selected_atoms'] is not None:
+                raise TypeError("test_selected_atoms must be integer or list of integers")
     else:
         if not all(isinstance(x, int) for x in kwargs['test_selected_atoms']):
             raise TypeError("All elements of test_selected_atoms must be integers")
@@ -222,7 +223,7 @@ def setup_simulation(**kwargs):
     kwargs = check_analysis_inputs(trajs, test_trajs, **kwargs)
     
     opt_methods = kwargs.get('methods')  # list of methods
-    implemented_opt = ['PCA', 'PCAfull', 'TICA','IVAC', 'TEMPPCA', 'PCAtest', "LDA", "SpatialPCA", "CumulantPCA"]
+    implemented_opt = ['PCA', 'PCAfull', 'TICA','IVAC', 'TEMPPCA', 'PCAtest', "LDA", "SpatialPCA", "CumulantPCA", "DistinctPCA"]
 
     system = kwargs["system"]
     version = kwargs["version"]
@@ -259,6 +260,8 @@ def setup_simulation(**kwargs):
                                 elif method.upper() == 'SPATIALPCA':
                                     #TODO add input check
                                     method_obj = SpatialPCA(descriptor, interval, sigma, spatial_cutoff, ridge_alpha, run_dir)
+                                elif method.upper() == 'DISTINCTPCA':
+                                    method_obj = DistinctPCA(descriptor, interval, ridge_alpha, run_dir)
                                 elif method.upper() == 'SPATIALTEMPPCA':
                                     #TODO add input check
                                     method_obj = SpatialTempPCA(descriptor, interval, sigma, spatial_cutoff, ridge_alpha, run_dir)
