@@ -181,4 +181,3 @@ class SOAP_descriptor_special():
         soap_block = self.soap_block.values.numpy()
         N,S = soap_block.shape
         return soap_block.reshape(1, -1) #TODO: return numpy
-    

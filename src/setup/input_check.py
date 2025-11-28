@@ -3,8 +3,9 @@ import os
 from ase.io.trajectory import Trajectory
 from itertools import chain
 import warnings
+from src.descriptors.PETMAD import PETMAD_descriptor
 from src.descriptors.SOAP import SOAP_descriptor_special
-from  src.descriptors.model_soap import SOAP_CV, CumulantSOAP_CV
+from src.descriptors.model_soap import SOAP_CV, CumulantSOAP_CV
 from src.methods import PCA, IVAC, TICA, TILDA, TempPCA, PCAfull, PCAtest, LDA, SpatialPCA, SpatialTempPCA, ScikitPCA, CumulantPCA, CumulantIVAC, DistinctPCA
 from src.setup.simulation import run_simulation
 from src.setup.simulation_test import run_simulation_test
@@ -187,9 +188,9 @@ def setup_simulation(**kwargs):
     else:
         fnames_test, indices_test = check_file_input(**kwargs["output_params"])
         test_trajs = [read_trj(fname, indices) for fname, indices in zip(fnames_test, indices_test)]
-        if kwargs["input_params"].get('concatenate'):
+        if kwargs["output_params"].get('concatenate'):
             test_trajs = [list(chain(*test_trajs))]
-        elif not kwargs["input_params"].get('concatenate'):
+        elif not kwargs["output_params"].get('concatenate'):
             pass
         else:
             raise TypeError('concatenate, needs to be either true or false')
@@ -216,6 +217,17 @@ def setup_simulation(**kwargs):
         descriptor_id = f"{SOAP_cutoff}{SOAP_max_angular}{SOAP_max_radial}"
         
         descriptor = SOAP_descriptor_special(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors)
+    
+    elif descriptor_name == 'PETMAD':
+        SOAP_kwargs = check_SOAP_inputs(trajs, **kwargs["SOAP_params"])
+        centers = SOAP_kwargs.get('centers')
+        neighbors = SOAP_kwargs.get('neighbors')
+        SOAP_cutoff = SOAP_kwargs.get('cutoff')
+        SOAP_max_angular = SOAP_kwargs.get('max_angular')
+        SOAP_max_radial = SOAP_kwargs.get('max_radial')
+        descriptor_id = f"{SOAP_cutoff}{SOAP_max_angular}{SOAP_max_radial}"
+        descriptor = PETMAD_descriptor(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors)
+   
     else:
         raise NotImplementedError(f"{descriptor} has not been implemented yet.")
     

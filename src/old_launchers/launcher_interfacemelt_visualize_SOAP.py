@@ -61,6 +61,7 @@ if __name__=='__main__':
     random.seed(7)
     random.shuffle(ids_atoms_train)
     ids_atoms_train = ids_atoms_train[:30]
+    ids_atoms_train = [705, 522, 699, 696, 693, 690, 513, 684, 540, 678, 570, 672, 669, 666, 591, 600]
 
     test_intervals = [1, 10, 100, 250]
     X_values = []
@@ -68,7 +69,7 @@ if __name__=='__main__':
     interval =1 
     sigma=0
     test_sigmas = [1,3,5]
-    for sigma in test_sigmas:
+    for interval in test_intervals:
         X, properties = SOAP_full(trj, interval, ids_atoms_train, HYPER_PARAMETERS, centers, neighbors, sigma)
         X_values.append(X[0]) # first center type TxNxD
 
@@ -90,14 +91,14 @@ if __name__=='__main__':
             )
             cs.save(fname + '_cs.json')
     print("saved chemiscope")"""
-    
-    for i in np.arange(X_values[0].shape[-1]//20)[:5]:
+    twothird = 2*(X_values[0].shape[-1]//20)//3
+    for i in np.arange(X_values[0].shape[-1]//20)[twothird:twothird+5]:
         SOAP_idx = np.arange(i*20, (i+1)*20, 1)
         #SOAP_idx = np.random.randint(0, X_values[0].shape[-1]//5, 25)
 
         print(f'done with calculation for {20*i} - {20*(i+1)}')
         label_used = label + f'_{i*20}-{20*(i+1)}'
-        plot_compare_spatialave(X_values, SOAP_idx, label_used, properties.values.numpy(), test_sigmas)
-        plot_compare_atoms_spat(X_values, SOAP_idx, label_used, properties.values.numpy(), test_sigmas)
-        #plot_compare_timeave(X_values, SOAP_idx, label_used, properties.values.numpy(), test_intervals)
-        #plot_compare_atoms(X_values, SOAP_idx, label_used, properties.values.numpy(), test_intervals)
+        #plot_compare_spatialave(X_values, SOAP_idx, label_used, properties.values.numpy(), test_sigmas)
+        #plot_compare_atoms_spat(X_values, SOAP_idx, label_used, properties.values.numpy(), test_sigmas)
+        plot_compare_timeave(X_values, SOAP_idx, label_used, properties.values.numpy(), test_intervals)
+        plot_compare_atoms(X_values, SOAP_idx, label_used, properties.values.numpy(), test_intervals)

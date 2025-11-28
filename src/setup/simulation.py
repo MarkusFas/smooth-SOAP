@@ -12,7 +12,9 @@ from src.plots.histograms import plot_2pca, plot_2pca_atoms, plot_2pca_height
 from src.classifier.Logreg import run_logistic_regression
 
 def run_simulation(trj, trj_test, methods_intervals, **kwargs):
+    is_shared = False
     if trj_test is None:
+        is_shared = True
         trj_test = trj
 
     if not isinstance(trj[0], list):
@@ -37,13 +39,15 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
             else:
                 train_atoms = N_train
             if isinstance(N_test , int):
-                if not is_shuffled:
-                    selected_atoms = [idx for idx, number in enumerate(trj[0][0].get_atomic_numbers()) if number==method.descriptor.centers[0]]
-                    random.shuffle(selected_atoms)
-                    test_atoms = selected_atoms[:N_test]
+                if is_shared:
+                    if not is_shuffled:
+                        selected_atoms = [idx for idx, number in enumerate(trj_test[0][0].get_atomic_numbers()) if number==method.descriptor.centers[0]]
+                        random.shuffle(selected_atoms)
+                    test_atoms = selected_atoms[-N_test:]
                 else:
                     print('test from shuffled')
-                    test_atoms = selected_atoms[10+N_train: 10+N_train + N_test]
+                    selected_atoms = [idx for idx, number in enumerate(trj_test[0][0].get_atomic_numbers()) if number==method.descriptor.centers[0]]
+                    random.shuffle(selected_atoms)
                     test_atoms = selected_atoms[-N_test:] # single atom case
             else:
                 test_atoms = N_test
@@ -85,7 +89,7 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
             
             if kwargs["output_per_structure"]:
                 X = [np.mean(x, axis=1)[:, np.newaxis, :] for x in X]
-
+                X_ridge = [np.mean(x, axis=1)[:, np.newaxis, :] for x in X_ridge]
             # label the trajectories:
             if kwargs['classify']['request']:
                 if kwargs['classify']['switch_index'] is not None:

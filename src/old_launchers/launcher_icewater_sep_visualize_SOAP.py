@@ -16,8 +16,8 @@ data2 = '/Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/dat
 
 data1 = '/Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/icemeltinterface/TIP4P/positions.extxyz'
 SOAP_cutoff = 5
-SOAP_max_angular = 6
-SOAP_max_radial = 5
+SOAP_max_angular = 3
+SOAP_max_radial = 3
 
 centers = [8] # center on Te
 neighbors  = [1,8]
@@ -58,23 +58,25 @@ if __name__=='__main__':
     random.shuffle(ids_atoms_train)
     ids_atoms_train = ids_atoms_train[:20]
 
-    test_intervals = [1]
+    test_intervals = [1, 10, 100, 250]
     X_values = []
     #for interval in test_intervals:
-    interval =1 
+    interval = 1 
     sigma=0
     test_sigmas = [2]
     for interval in test_intervals:
         X, properties = SOAP_full(trj, interval, ids_atoms_train, HYPER_PARAMETERS, centers, neighbors, sigma)
         X_values.append(X[0]) # first center type TxNxD
 
-    for i in range(X_values[0].shape[-1]//20):
-        SOAP_idx = np.arange(i*20, (i+1)*20, 1)
-        #SOAP_idx = np.random.randint(0, X_values[0].shape[-1]//5, 25)
+        twothird = 2*(X_values[0].shape[-1]//20)//3
+        twothird = 0
+        for i in np.arange(X_values[0].shape[-1]//20)[twothird:twothird+5]:
+            SOAP_idx = np.arange(i*20, (i+1)*20, 1)
+            #SOAP_idx = np.random.randint(0, X_values[0].shape[-1]//5, 25)
 
-        print(f'done with calculation for {20*i} - {20*(i+1)}')
-        label_used = label + f'_{i*20}-{20*(i+1)}'
-        #plot_compare_spatialave(X_values, SOAP_idx, label_used, properties.values.numpy(), test_sigmas)
-        #plot_compare_atoms_spat(X_values, SOAP_idx, label_used, properties.values.numpy(), test_sigmas)
-        plot_compare_timeave(X_values, SOAP_idx, label_used, properties.values.numpy(), test_intervals)
-        plot_compare_atoms(X_values, SOAP_idx, label_used, properties.values.numpy(), test_intervals)
+            print(f'done with calculation for {20*i} - {20*(i+1)}')
+            label_used = label + f'_{i*20}-{20*(i+1)}'
+            #plot_compare_spatialave(X_values, SOAP_idx, label_used, properties.values.numpy(), test_sigmas)
+            #plot_compare_atoms_spat(X_values, SOAP_idx, label_used, properties.values.numpy(), test_sigmas)
+            plot_compare_timeave(X_values, SOAP_idx, label_used, properties.values.numpy(), test_intervals)
+            plot_compare_atoms(X_values, SOAP_idx, label_used, properties.values.numpy(), test_intervals)
