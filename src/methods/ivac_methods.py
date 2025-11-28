@@ -10,6 +10,7 @@ from scipy.ndimage import gaussian_filter
 import ase.neighborlist
 from vesin import ase_neighbor_list
 from memory_profiler import profile
+from sklearn.linear_model import Ridge 
 
 from src.transformations.PCAtransform import PCA_obj
 from src.methods.BaseMethod import FullMethodBase
