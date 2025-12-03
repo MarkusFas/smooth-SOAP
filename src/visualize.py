@@ -50,6 +50,24 @@ def plot_compare_atoms(X_values, SOAP_idx, label, properties, intervals):
         plt.close()
 
 @mpltex.acs_decorator
+def plot_compare_atoms_cum(X_values, SOAP_idx, label, properties, intervals):
+    # X is T,N,D
+    # plot different models for time averageing
+    for n, X in enumerate(X_values):
+        fig, ax = plt.subplots(1,len(SOAP_idx),figsize=( 4*len(SOAP_idx), 4), squeeze=False)
+        # plot different atoms
+        
+        for j, soap_i in enumerate(SOAP_idx):
+            ax[0,j].set_title(fr'{properties[soap_i,0]},{properties[soap_i,1]} $l$ {properties[soap_i,2]}, $n_1$ {properties[soap_i,3]}, $n_2$ {properties[soap_i,4]}')
+            ax[0,j].set_xlabel('steps')
+            for i in range(X.shape[1]):
+                ax[0,j].plot(X[:,i, soap_i], label=f'cum {i+1}', alpha=0.2)
+            ax[0,j].legend()
+        plt.tight_layout()
+        plt.savefig(label+f'_SOAP_compare_atoms_cum_interval_{intervals[n]}.png', dpi=200)
+        plt.close()
+
+@mpltex.acs_decorator
 def plot_compare_atoms_spat(X_values, SOAP_idx, label, properties, intervals):
     # X is T,N,D
     # plot different models for time averageing
@@ -137,6 +155,8 @@ def plot_compare_timeave(X_values, SOAP_idx, label, properties, intervals):
     plt.tight_layout()
     plt.savefig(label+'_SOAPvectors.png', dpi=200)
     plt.close()
+
+
         
 def plot_compare_spatialave(X_values, SOAP_idx, label, properties, intervals):
     # X is T,N,D

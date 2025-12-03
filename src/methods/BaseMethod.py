@@ -142,11 +142,11 @@ class FullMethodBase(ABC):
 
         return projected_per_type  # shape: (#centers ,N_atoms, T, latent_dim)
     
-    def fit_ridge_nonincremental(self, traj, ridge_alpha):
+    def fit_ridge_nonincremental(self, traj):
         systems = systems_to_torch(traj, dtype=torch.float64)
         soap_block = self.descriptor.calculate(systems[:1], selected_samples=self.descriptor.selected_samples)
         print(soap_block.shape)
-        first_soap =  soap_block  
+        first_soap = soap_block  
         buffer = np.zeros((first_soap.shape[0], self.interval, first_soap.shape[1]))
         
         delta=np.zeros(self.interval)
@@ -157,7 +157,7 @@ class FullMethodBase(ABC):
 
 
         for idx, trafo in enumerate(self.transformations):
-            self.ridge[idx] = Ridge(alpha=ridge_alpha, fit_intercept=False)
+            self.ridge[idx] = Ridge(alpha=self.ridge_alpha, fit_intercept=False)
             avg_soap_proj = trafo.project(first_soap) 
             print('avg_soap_proj',avg_soap_proj.shape)
             soap_values=np.zeros((first_soap.shape[0],len(systems)-self.interval, first_soap.shape[1]))

@@ -1,5 +1,9 @@
-import matplotlib.pyplot as plt
+import ase
+from ase.io import read
+from collections import Counter
+atoms = read('data/chignolin/0_whole_centered.pdb')
 
-data = [1,2,3]
-plt.plot(data)
-plt.savef
+types = atoms.get_chemical_symbols()
+counts = Counter(types)
+
+print(counts)

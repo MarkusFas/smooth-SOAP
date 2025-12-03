@@ -1,5 +1,6 @@
 results/
 data/
+metad/
 *.pyc 
 */*.pyc
 */*/*.pyc

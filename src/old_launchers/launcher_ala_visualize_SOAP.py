@@ -3,7 +3,7 @@ from src.old_scripts.descriptors import SOAP_mean, SOAP_full
 from src.transformations.PCAtransform import pcatransform, PCA_obj
 
 from src.old_scripts.fourier import fourier_trafo
-from src.visualize import plot_compare_atoms, plot_compare_timeave, plot_compare_spatialave, plot_compare_atoms_spat
+from src.visualize import plot_compare_atoms, plot_compare_timeave, plot_compare_atoms_cum, plot_compare_spatialave, plot_compare_atoms_spat
 
 import numpy as np
 from tqdm import tqdm
@@ -15,14 +15,14 @@ import random
 from scipy.stats import moment
 #data1 = '/Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/icemeltinterface/TIP4P/positions.extxyz'
 #data1 = '/Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/interfaces/250_275/positions.lammpstrj'
-data1 = '/Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/interfaces/250_275_fast/positions.lammpstrj'
+data1 = '/Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/ALA/ala2_ase.traj'
 #data1 = '/Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/interfaces/250/positions.lammpstrj'
 SOAP_cutoff = 5
-SOAP_max_angular = 6
-SOAP_max_radial = 6
+SOAP_max_angular = 3
+SOAP_max_radial = 3
 
-centers = [8] # center on Te
-neighbors  = [1,8]
+centers = [6] # center on Te
+neighbors  = [1,6,7,8]
 
 HYPER_PARAMETERS = {
     "cutoff": {
@@ -40,65 +40,65 @@ HYPER_PARAMETERS = {
     },
 }
 
-    def compute_cumulants(X, n_cumulants):
-        """
-        Compute cumulants for each feature and concatenate them horizontally.
-        
-        Parameters
-        ----------
-        X : np.ndarray, shape (N, P)
-            Data matrix with N samples and P features.
-        n_cumulants : int
-            Number of cumulants to compute per feature.
-        
-        Returns
-        -------
-        X_cumulant : np.ndarray, shape (N, P * n_cumulants)
-            New feature matrix where cumulants of each original feature 
-            are concatenated along the feature axis.
-        """
-        X = np.asarray(X)
-        N, P = X.shape
-        
-        cumulant_matrix = []
-        for j in range(P):
-            x = X[:, j]
-            m = np.mean(x)
-            centered = x - m
+def compute_cumulants(X, n_cumulants):
+    """
+    Compute cumulants for each feature and concatenate them horizontally.
+    
+    Parameters
+    ----------
+    X : np.ndarray, shape (N, P)
+        Data matrix with N samples and P features.
+    n_cumulants : int
+        Number of cumulants to compute per feature.
+    
+    Returns
+    -------
+    X_cumulant : np.ndarray, shape (N, P * n_cumulants)
+        New feature matrix where cumulants of each original feature 
+        are concatenated along the feature axis.
+    """
+    X = np.asarray(X)
+    N, P = X.shape
+    
+    cumulant_matrix = []
+    for j in range(P):
+        x = X[:, j]
+        m = np.mean(x)
+        centered = x - m
 
-            # Compute central moments up to n_cumulants
-            mu = np.array([moment(centered, moment=i) for i in range(1, n_cumulants + 1)])
-            c = np.zeros(n_cumulants)
-            
-            # First cumulants (mean, variance, skewness, kurtosis, ...)
-            c[0] = m
-            if n_cumulants > 1:
-                c[1] = mu[1]                 # variance
-            if n_cumulants > 2:
-                c[2] = mu[2]                 # 3rd central moment
-            if n_cumulants > 3:
-                c[3] = mu[3] - 3 * mu[1]**2  # 4th cumulant (kurtosis-related)
-            # higher orders could follow recursion, but are rarely stable
-            if n_cumulants > 4:
-                c[4] = mu[4] - 10 * mu[1] * mu[2]
-            # Broadcast cumulant values to N samples
-            cumulant_matrix.append(c)
+        # Compute central moments up to n_cumulants
+        mu = np.array([moment(centered, moment=i) for i in range(1, n_cumulants + 1)])
+        c = np.zeros(n_cumulants)
         
-        # Concatenate all cumulant blocks for each feature
-        X_cumulant = np.hstack(cumulant_matrix)
-        return X_cumulant
+        # First cumulants (mean, variance, skewness, kurtosis, ...)
+        c[0] = m
+        if n_cumulants > 1:
+            c[1] = mu[1]                 # variance
+        if n_cumulants > 2:
+            c[2] = mu[2]                 # 3rd central moment
+        if n_cumulants > 3:
+            c[3] = mu[3] - 3 * mu[1]**2  # 4th cumulant (kurtosis-related)
+        # higher orders could follow recursion, but are rarely stable
+        if n_cumulants > 4:
+            c[4] = mu[4] - 10 * mu[1] * mu[2]
+        # Broadcast cumulant values to N samples
+        cumulant_matrix.append(c)
+    
+    # Concatenate all cumulant blocks for each feature
+    X_cumulant = np.array(cumulant_matrix).T
+    return X_cumulant
 
 
 
 if __name__=='__main__':
     trj1 = read_trj(data1, ':')
     #trj = trj1[:1000] + trj1[-1000:]
-    trj = trj1[::5]
+    trj = trj1[:2000]
     #trj = tamper_water_trj(trj)
     #trj = trj[:2]
 
     print('done loading the structures')
-    dir = f'results/icewaterinterfacemeltfast_lf/ICESPATIAL/250_275_fast/test/visual_constantavg_stride/CUTOFF/SOAP_deeptime_single'
+    dir = f'results/ala/ICESPATIAL//visual/CUTOFF/SOAP_deeptime_single'
     #dir = f'results/icewaterinterfacemelt/ALLSPATIAL/visual_constantavg_stride/CUTOFF/SOAP_deeptime_single'
     Path(dir).mkdir(parents=True, exist_ok=True)
     
@@ -110,19 +110,30 @@ if __name__=='__main__':
     random.seed(7)
     random.shuffle(ids_atoms_train)
     ids_atoms_train = ids_atoms_train[:30]
-    ids_atoms_train = [705, 522, 699, 696, 693, 690, 513, 684, 540, 678, 570, 672, 669, 666, 591, 600]
+    ids_atoms_train = [1,4,8,10,14,18]
 
-    test_intervals = [1, 10, 100, 250]
+    test_intervals = [1]
     X_values = []
     #for interval in test_intervals:
     interval =1 
     sigma=0
     test_sigmas = [1,3,5]
+    X_cum_values=[]
     for interval in test_intervals:
         X, properties = SOAP_full(trj, interval, ids_atoms_train, HYPER_PARAMETERS, centers, neighbors, sigma)
+        cum=[]
+        print('starting cumulants...')
+        for x in X[0]: #only one centers
+            cum.append(compute_cumulants(x, 5))
+        cumulants = np.array(cum)
+        mins = np.min(cumulants, axis=0)
+        maxs = np.max(cumulants, axis=0)
+        cumulants = (cumulants-mins)/(maxs-mins+1e-8)
+        X_cum_values.append(cumulants)
         X_values.append(X[0]) # first center type TxNxD
-
-
+    print('done with computing')
+    
+    
     """SOAP_idx = 10
     for SOAP_idx in range(12):
         for i, SOAPS in enumerate(X_values):
@@ -142,6 +153,7 @@ if __name__=='__main__':
             cs.save(fname + '_cs.json')
     print("saved chemiscope")"""
     twothird = 2*(X_values[0].shape[-1]//20)//3
+    twothird=0
     for i in np.arange(X_values[0].shape[-1]//20)[twothird:twothird+5]:
         SOAP_idx = np.arange(i*20, (i+1)*20, 1)
         #SOAP_idx = np.random.randint(0, X_values[0].shape[-1]//5, 25)
@@ -152,3 +164,4 @@ if __name__=='__main__':
         #plot_compare_atoms_spat(X_values, SOAP_idx, label_used, properties.values.numpy(), test_sigmas)
         plot_compare_timeave(X_values, SOAP_idx, label_used, properties.values.numpy(), test_intervals)
         plot_compare_atoms(X_values, SOAP_idx, label_used, properties.values.numpy(), test_intervals)
+        plot_compare_atoms_cum(X_cum_values, SOAP_idx, label_used, properties.values.numpy(), test_intervals)

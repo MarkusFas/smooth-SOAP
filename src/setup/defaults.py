@@ -9,12 +9,19 @@ DEFAULT_PARAMS = {
     "min_lag": 100,
     "lag_step": 20,
     "sigma": 0,
+    "n_cumulants": 1,
     "methods": "PCA",
     "spatial_cutoff": 0,
     "train_selected_atoms": 1,
-    "test_selected_atoms": 1,
+    "test_selected_atoms": None,
 
     "input_params": {
+        "fname": None,
+        "indices": ":",
+        "concatenate": True,
+    },
+    "output_per_structure": True,
+    "output_params": {
         "fname": None,
         "indices": ":",
         "concatenate": True,
@@ -32,6 +39,7 @@ DEFAULT_PARAMS = {
     "plots": ["projection"],
     "ridge": False,
     "ridge_alpha": 0,
+    "ridge_save": True,
     "model_save": False,
     "model_proj_dims": [0],
     

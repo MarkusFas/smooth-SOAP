@@ -1,6 +1,6 @@
 import os
 import random
-
+import metatomic.torch as mta
 import numpy as np
 from tqdm import tqdm
 from pathlib import Path
@@ -11,11 +11,18 @@ from src.plots.timeseries import plot_projection_atoms, plot_projection_atoms_mo
 from src.plots.histograms import plot_2pca, plot_2pca_atoms, plot_2pca_height
 from src.classifier.Logreg import run_logistic_regression
 
-def run_simulation(trj, methods_intervals, **kwargs):
-    
+def run_simulation(trj, trj_test, methods_intervals, **kwargs):
+    is_shared = False
+    if trj_test is None:
+        is_shared = True
+        trj_test = trj
+
     if not isinstance(trj[0], list):
         trj = [trj]
-    
+
+    if not isinstance(trj_test[0], list):
+        trj_test = [trj_test]
+
     for i, methods in tqdm(enumerate(methods_intervals), desc="looping through intervals"):
         for j, method in tqdm(enumerate(methods), desc="looping through methods"):
             random.seed(7)
@@ -32,23 +39,28 @@ def run_simulation(trj, methods_intervals, **kwargs):
             else:
                 train_atoms = N_train
             if isinstance(N_test , int):
-                if not is_shuffled:
-                    selected_atoms = [idx for idx, number in enumerate(trj[0][0].get_atomic_numbers()) if number==method.descriptor.centers[0]]
-                    random.shuffle(selected_atoms)
-                    test_atoms = selected_atoms[:N_test]
+                if is_shared:
+                    if not is_shuffled:
+                        selected_atoms = [idx for idx, number in enumerate(trj_test[0][0].get_atomic_numbers()) if number==method.descriptor.centers[0]]
+                        random.shuffle(selected_atoms)
+                    test_atoms = selected_atoms[-N_test:]
                 else:
                     print('test from shuffled')
-                    test_atoms = selected_atoms[10+N_train: 10+N_train + N_test]
+                    selected_atoms = [idx for idx, number in enumerate(trj_test[0][0].get_atomic_numbers()) if number==method.descriptor.centers[0]]
+                    random.shuffle(selected_atoms)
                     test_atoms = selected_atoms[-N_test:] # single atom case
             else:
                 test_atoms = N_test
+            if test_atoms is None:
+                test_atoms = train_atoms
             print('Ntrain, Ntest: ', N_train, N_test)
             print('Train atoms: {}'.format(train_atoms))        
             print('Test atoms: {}'.format(test_atoms))        
             #train_atoms = selected_atoms
             train_atoms = sorted(train_atoms)
             test_atoms = sorted(test_atoms)
-
+            #print("WARNING SAME TEST AND TRAIN ATOMS")
+            #test_atoms = train_atoms
             # train our method by specifying the selected atoms
             method.train(trj, train_atoms)
 
@@ -59,7 +71,7 @@ def run_simulation(trj, methods_intervals, **kwargs):
             # for prediction we can use the concatenated trajectories
 
 
-            trj_predict = list(chain(*trj))
+            trj_predict = list(chain(*trj_test))
             X = method.predict(trj_predict, test_atoms) ##centers N,T,P
             X = [proj.transpose(1,0,2) for proj in X]#centers T,N,P
 
@@ -68,12 +80,15 @@ def run_simulation(trj, methods_intervals, **kwargs):
                 method.fit_ridge(trj_predict)
   
                 #print('fit ridge 2')
-                #method.fit_ridge_nonincremental(trj[0], kwargs["ridge_alpha"])
+                trj_ridge = list(chain(*trj))
+                method.fit_ridge_nonincremental(trj_ridge)
 
                 X_ridge = method.predict_ridge(trj_predict, test_atoms)
                 X_ridge = [proj.transpose(1,0,2) for proj in X_ridge]
             
-
+            if kwargs["output_per_structure"]:
+                X = [np.mean(x, axis=1)[:, np.newaxis, :] for x in X]
+                X_ridge = [np.mean(x, axis=1)[:, np.newaxis, :] for x in X_ridge]
             # label the trajectories:
             if kwargs['classify']['request']:
                 if kwargs['classify']['switch_index'] is not None:
@@ -144,6 +159,22 @@ def run_simulation(trj, methods_intervals, **kwargs):
                 cs.save(method.label + '_cs.json')
                 print("saved chemiscope")
 
+            if kwargs["model_save"]:
+                for i, trans in enumerate(method.transformations):
+                    method.descriptor.set_atom_types(trj)
+                    if kwargs["ridge"] and kwargs["ridge_save"]:
+                        method.descriptor.set_projection_matrix(method.ridge[i].coef_.T)
+                    else:
+                        method.descriptor.set_projection_matrix(trans.eigvecs)
+                    method.descriptor.set_projection_dims(dims=kwargs['model_proj_dims'])
+                    method.descriptor.set_projection_mu(mu=trans.mu)
+                    method.descriptor.eval()   
+                    #method.descriptor.save_model(path=method.root+f'/interval_{method.interval}/', name='model_soap')   
+                    #print(f'saved model at {method.root}'+f'/interval_{method.interval}/')    
+                    method.descriptor.save_model(path=method.label, name='model_soap') 
+
+
+                    
     if ("heatmap" in plots) and len(methods_intervals) >= 2:
         interval_0 = methods_intervals[0]
         interval_1 = methods_intervals[1]
@@ -156,15 +187,6 @@ def run_simulation(trj, methods_intervals, **kwargs):
             plot_heatmap(cov2_int0[i], cov2_int1[i], method.root + f'_spatial_interval{interval_0[0].interval}{interval_1[0].interval}_center{center}' + f'_{i}')
         print('Plotted heatmap')
  
-    if kwargs["model_save"]:
-        for trans in method.transformations:
-            method.descriptor.set_atom_types(trj)
-            method.descriptor.set_projection_matrix(trans.eigvecs)
-            method.descriptor.set_projection_dims(dims=kwargs['model_proj_dims'])
-            method.descriptor.set_projection_mu(mu=trans.mu)
-            method.descriptor.eval()   
-            method.descriptor.save_model(path=method.root+f'/interval_{method.interval}/', name='model_soap')   
-            print(f'saved model at {method.root}'+f'/interval_{method.interval}/')    
-
+    
 if __name__ == '__main__':
     print('Nothing to do here')
