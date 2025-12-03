@@ -286,13 +286,13 @@ def setup_simulation(**kwargs):
                                 elif method.upper() == 'SCIKITPCA':
                                     method_obj = ScikitPCA(descriptor, interval, ridge_alpha, run_dir)
                                 elif method.upper() == 'CUMULANTPCA':
-                                    descriptor = CumulantSOAP_CV(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors)
+                                    descriptor = CumulantSOAP_CV(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors, n_cumulants)
                                     method_obj = CumulantPCA(descriptor, interval, ridge_alpha, n_cumulants, run_dir)
                                 elif method.upper() == 'CUMULANTIVAC':
                                     max_lag = kwargs.get("max_lag")
                                     min_lag = kwargs.get("min_lag")
                                     lag_step = kwargs.get("lag_step")
-                                    descriptor = CumulantSOAP_CV(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors)
+                                    descriptor = CumulantSOAP_CV(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors, n_cumulants)
                                     method_obj = CumulantIVAC(descriptor, interval, max_lag, min_lag, lag_step, ridge_alpha, n_cumulants, run_dir)
                                 else:
                                     raise NotImplementedError(f"Method must be one of {implemented_opt}, got {method}")

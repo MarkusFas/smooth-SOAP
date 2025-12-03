@@ -620,6 +620,7 @@ class PCAfull(FullMethodBase):
         )
 
         for i, trafo in enumerate(self.transformations):
+            
             np.savetxt(
                 self.label + f"_center{self.descriptor.centers[i]}" + "_cov_mu_t.csv",
                 self.cov_mu_t[0],
@@ -640,7 +641,14 @@ class PCAfull(FullMethodBase):
                 self.label + f"_center{self.descriptor.centers[i]}" + f"_eigvecs.pt",
             ) 
 
-
+    def get_explained_variance(self):
+        explained_variance = []
+        for trafo in self.transformations:
+            total_variance = np.sum(trafo.eigvals)
+            variance_ratio = trafo.eigvals / total_variance
+            explained_variance.append(variance_ratio)
+        
+        
 class SpatialPCA(FullMethodBase):
 
     def __init__(self, descriptor, interval, sigma, ridge_alpha, root):

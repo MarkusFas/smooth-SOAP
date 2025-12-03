@@ -191,7 +191,7 @@ class SOAP_CV(torch.nn.Module):
 
 
 class CumulantSOAP_CV(torch.nn.Module):
-    def __init__(self, cutoff, max_angular, max_radial, centers, neighbors, projection_matrix=None):
+    def __init__(self, cutoff, max_angular, max_radial, centers, neighbors, n_cumulants, projection_matrix=None):
         super().__init__()
         HYPER_PARAMETERS = {
             "cutoff": {
@@ -211,6 +211,7 @@ class CumulantSOAP_CV(torch.nn.Module):
         self.calculator = SoapPowerSpectrum(**HYPER_PARAMETERS)
         self.centers = centers
         self.neighbors = neighbors
+        self.n_cumulants = n_cumulants
         self.selected_keys = Labels(
             names=["center_type", "neighbor_1_type", "neighbor_2_type"],
             values=torch.tensor([[i,j,k] for i in centers for j in neighbors for k in neighbors if j <=
@@ -264,7 +265,7 @@ class CumulantSOAP_CV(torch.nn.Module):
 
             soap_block = soap.block()
             
-            X = self.compute_cumulants_fwd(soap_block.values, 3) # ATTENTION HARD CODED 3 
+            X = self.compute_cumulants_fwd(soap_block.values, self.n_cumulants) 
             projected = torch.einsum('ij,jk->ik',(X - self.mu), self.projection_matrix[:,self.proj_dims])#, dtype=torch.float64)
 
             #samples = soap_block.samples.remove("center_type")
