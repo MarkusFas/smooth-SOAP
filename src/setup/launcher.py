@@ -59,13 +59,13 @@ if __name__ == "__main__":
     #input_file = 'systems/ice_water_sep/test_intervaltemp.yaml'
     #input_file = 'systems/chignolin/run0.yaml'
     #input_file = 'systems/GeTe/run0.yaml'
-    input_file = 'systems/ala/run0.yaml'
+    #input_file = 'systems/ala/run0.yaml'
     user_cfg = load_config(input_file)
     params = merge_params(DEFAULT_PARAMS, user_cfg, input_file)
     setup_simulation(**params)
-    exit()
+
     input_file = 'systems/chignolin/run0.yaml'
-    #input_file = 'systems/cycloAE/test_interval_hf1.yaml'
+    input_file = 'systems/cycloAE/test_interval_hf1.yaml'
     user_cfg = load_config(input_file)
     params = merge_params(DEFAULT_PARAMS, user_cfg, input_file)
     setup_simulation(**params)

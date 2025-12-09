@@ -6,7 +6,7 @@ import warnings
 from src.descriptors.PETMAD import PETMAD_descriptor
 from src.descriptors.SOAP import SOAP_descriptor_special
 from src.descriptors.model_soap import SOAP_CV, CumulantSOAP_CV
-from src.methods import PCA, IVAC, TICA, TILDA, TempPCA, PCAfull, PCAtest, LDA, SpatialPCA, SpatialTempPCA, ScikitPCA, CumulantPCA, CumulantIVAC, DistinctPCA
+from src.methods import PCA, IVAC, TICA, TILDA, TempPCA, PCAfull, PCAtest, LDA, SpatialPCA, SpatialTempPCA, ScikitPCA, CumulantPCA, CumulantIVAC, DistinctPCA, PCAnorm
 from src.setup.simulation import run_simulation
 from src.setup.simulation_test import run_simulation_test
 from src.setup.read_data import read_trj
@@ -285,6 +285,8 @@ def setup_simulation(**kwargs):
                                     method_obj = TILDA(descriptor, interval, lag, sigma, ridge_alpha, run_dir)
                                 elif method.upper() == 'SCIKITPCA':
                                     method_obj = ScikitPCA(descriptor, interval, ridge_alpha, run_dir)
+                                elif method.upper() == 'PCANORM':
+                                    method_obj = PCAnorm(descriptor, interval, ridge_alpha, run_dir)
                                 elif method.upper() == 'CUMULANTPCA':
                                     descriptor = CumulantSOAP_CV(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors, n_cumulants)
                                     method_obj = CumulantPCA(descriptor, interval, ridge_alpha, n_cumulants, run_dir)

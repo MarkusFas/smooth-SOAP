@@ -317,6 +317,7 @@ class CumulantSOAP_CV(torch.nn.Module):
         )
         
         metadata = ModelMetadata(name="Collective Variable test")
+        self.eval()
         model = AtomisticModel(self, metadata, capabilities)
         model.save("{}/{}.pt".format(path,name), collect_extensions=f"{path}/extensions")
 
@@ -440,4 +441,3 @@ class CumulantSOAP_CV(torch.nn.Module):
         # Concatenate all cumulant blocks for each feature
         X_cumulant = np.hstack(cumulant_matrix)
         return X_cumulant
-

@@ -1,11 +1,14 @@
 import os
 import random
+
 import metatomic.torch as mta
 import numpy as np
 from tqdm import tqdm
 from pathlib import Path
 from itertools import chain
 import chemiscope
+
+from src.plots.onion import plot_onion
 from src.plots.cov_heatmap import plot_heatmap
 from src.plots.timeseries import plot_projection_atoms, plot_projection_atoms_models
 from src.plots.histograms import plot_2pca, plot_2pca_atoms, plot_2pca_height
@@ -113,7 +116,9 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
 
             plots = kwargs.get("plots", [])
 
-            
+            if "onion" in plots:
+                plot_onion(X, method.label)
+
             if "projection" in plots:
                 plot_projection_atoms(X, [0,1,2,3], method.label, [method.interval]) # need to transpose to T,N,P
                 if kwargs["ridge"]:

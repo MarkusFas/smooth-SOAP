@@ -1,5 +1,5 @@
 from src.setup.read_data import read_trj, tamper_water_trj
-from src.old_scripts.descriptors import SOAP_mean, SOAP_full
+from src.old_scripts.descriptors import SOAP_mean, SOAP_full, SOAP_norm
 from src.transformations.PCAtransform import pcatransform, PCA_obj
 from src.timeaverages import timeaverage
 from src.old_scripts.fourier import fourier_trafo
@@ -39,7 +39,7 @@ if __name__=='__main__':
     trj1, ids_atoms = read_trj(data)
     #trj2, ids_atoms2 = read_trj(data2)
     #trj = trj1 + trj2
-    trj = trj1
+    trj = trj1[:25]
     #trj = tamper_water_trj(trj)
     #trj = trj[:2]
     
@@ -55,7 +55,7 @@ if __name__=='__main__':
     test_intervals = [1]
     X_values = []
     for interval in test_intervals:
-        X, properties = SOAP_full(trj, interval, ids_atoms_train, HYPER_PARAMETERS, centers, neighbors)
+        X, properties = SOAP_norm(trj, interval, ids_atoms_train, HYPER_PARAMETERS, centers, neighbors)
         X_values.append(X[0]) # first center type TxNxD
 
     for i in range(X_values[0].shape[-1]//20):

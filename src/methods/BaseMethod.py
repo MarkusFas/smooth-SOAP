@@ -139,7 +139,7 @@ class FullMethodBase(ABC):
                 # TODO:
                 #self.ridge.fit(descriptor, descriptor_proj)
             projected_per_type.append(np.stack(projected, axis=0).transpose(1, 0, 2))
-
+        self.get_explained_variance(traj, selected_atoms)
         return projected_per_type  # shape: (#centers ,N_atoms, T, latent_dim)
     
     def fit_ridge_nonincremental(self, traj):
@@ -245,7 +245,7 @@ class FullMethodBase(ABC):
                 projected.append(ridge_pred)
                
             projected_per_type.append(np.stack(projected, axis=0).transpose(1, 0, 2))
-
+        self.get_explained_variance_ridge(traj, selected_atoms)
         return projected_per_type
         
 
@@ -276,8 +276,134 @@ class FullMethodBase(ABC):
 
         return averaged_features
 
+    def get_explained_variance(self, traj, selected_atoms):
+        """
+        Project new trajectory frames into the trained collective variable (CV) space.
+
+        Parameters
+        ----------
+        traj : list[ase.Atoms]
+            Trajectory to project.
+        selected_atoms : list[int]
+            Indices of atoms to project.
+
+        Returns
+        -------
+        np.ndarray, shape (n_atoms, n_frames, n_components)
+            Projected low-dimensional representation.
+        """
+        if self.transformations is None:
+            raise RuntimeError("Call train() before predict().")
+
+        self.selected_atoms = selected_atoms
+        self.descriptor.set_samples(selected_atoms)
+        systems = systems_to_torch(traj, dtype=torch.float64)
+        for i, trafo in enumerate(self.transformations):
+            proj_sum = np.zeros(trafo.n_components)
+            proj_scatter = np.zeros(trafo.n_components)
+            x_scatter = np.zeros(trafo.eigvecs.shape[0])
+            x_sum = np.zeros(trafo.eigvecs.shape[0])
+            x_var = 0
+            n = 0
+            n_proj = 0
+            for system in systems:
+                descriptor = self.descriptor.calculate([system])
+                descriptor_proj = trafo.project(descriptor)
+                # for temporal only
+                descriptor = np.sum(descriptor, axis=0)
+                descriptor_proj = np.sum(descriptor_proj, axis=0)
+
+                #x_sum += np.sum(descriptor, axis=0)
+                x_sum += descriptor
+                #x_scatter += np.einsum('ij,ij->j', descriptor, descriptor)
+                x_scatter += descriptor*descriptor
+                # proj_sum += descriptor_proj.sum(axis=0)
+                proj_sum += descriptor_proj
+                #proj_scatter += np.einsum('ij,ij->j', descriptor_proj, descriptor_proj)
+                proj_scatter += descriptor_proj*descriptor_proj
+                #n_proj += descriptor_proj.shape[0]
+                n_proj += 1
+                #n += descriptor.shape[0]
+                n += 1
+
+            proj_mean = proj_sum/n_proj
+            proj_var = proj_scatter/n_proj - proj_mean*proj_mean
+            x_mean = x_sum/n
+            x_var = x_scatter/n - x_mean*x_mean
+            #x_var = np.sum(x_var)
+            #x_var = proj_scatter/n - proj_mean*proj_mean
+            EVR = proj_var / np.sum(x_var)
+            torch.save(
+                torch.tensor(EVR),
+                self.label + f"_center{self.descriptor.centers[i]}" + f"EVR.pt",
+            )
+            print('Explained variance ratio: ', EVR)
 
 
+    def get_explained_variance_ridge(self, traj, selected_atoms):
+        """
+        Project new trajectory frames into the trained collective variable (CV) space.
+
+        Parameters
+        ----------
+        traj : list[ase.Atoms]
+            Trajectory to project.
+        selected_atoms : list[int]
+            Indices of atoms to project.
+
+        Returns
+        -------
+        np.ndarray, shape (n_atoms, n_frames, n_components)
+            Projected low-dimensional representation.
+        """
+        if self.transformations is None:
+            raise RuntimeError("Call train() before predict().")
+
+        self.selected_atoms = selected_atoms
+        self.descriptor.set_samples(selected_atoms)
+        systems = systems_to_torch(traj, dtype=torch.float64)
+
+        for i, trafo in enumerate(self.transformations):
+            proj_sum = np.zeros(trafo.n_components)
+            proj_scatter = np.zeros(trafo.n_components)
+            x_scatter = np.zeros(trafo.eigvecs.shape[0])
+            x_sum = np.zeros(trafo.eigvecs.shape[0])
+            x_var = 0
+            n = 0
+            n_proj = 0
+            for system in systems:
+                descriptor = self.descriptor.calculate([system])
+                descriptor_proj = self.ridge[i].predict(descriptor)
+                descriptor -= trafo.mu
+                # for temporal only
+                descriptor = np.sum(descriptor, axis=0)
+                descriptor_proj = np.sum(descriptor_proj, axis=0)
+
+                #x_sum += np.sum(descriptor, axis=0)
+                x_sum += descriptor
+                #x_scatter += np.einsum('ij,ij->j', descriptor, descriptor)
+                x_scatter += descriptor*descriptor
+                # proj_sum += descriptor_proj.sum(axis=0)
+                proj_sum += descriptor_proj
+                #proj_scatter += np.einsum('ij,ij->j', descriptor_proj, descriptor_proj)
+                proj_scatter += descriptor_proj*descriptor_proj
+                #n_proj += descriptor_proj.shape[0]
+                n_proj += 1
+                #n += descriptor.shape[0]
+                n += 1
+
+            proj_mean = proj_sum/n_proj
+            proj_var = proj_scatter/n_proj - proj_mean*proj_mean
+            x_mean = x_sum/n
+            x_var = x_scatter/n - x_mean*x_mean
+            #x_var = np.sum(x_var)
+            #x_var = proj_scatter/n - proj_mean*proj_mean
+            EVR = proj_var / np.sum(x_var)
+            torch.save(
+                torch.tensor(EVR),
+                self.label + f"_center{self.descriptor.centers[i]}" + f"EVR_ridge.pt",
+            )
+            print('Explained ridge variance ratio: ', EVR)
 
 
 
@@ -533,4 +659,3 @@ class FullMethodBase(ABC):
         empty
         """
         pass
-

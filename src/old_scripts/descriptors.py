@@ -240,6 +240,62 @@ def SOAP_full(traj, interval, ids_atoms, HYPER_PARAMETERS, centers, neighbors, s
         buffer[:,fidx%maxlag,:] = new_soap_values
     return [soaps[:ntimesteps[atom_type_idx]] for atom_type_idx, soaps in enumerate(inframe)], soap_block.properties # trim zeros from the back 
 
+@profile
+def SOAP_norm(traj, interval, ids_atoms, HYPER_PARAMETERS, centers, neighbors, sigma=0):
+    # select which atoms to compute the SOAP for (here all)
+    calculator = SoapPowerSpectrum(**HYPER_PARAMETERS)
+
+    sel = Labels(
+        names=["center_type", "neighbor_1_type", "neighbor_2_type"],
+        values=torch.tensor([[i,j,k] for i in centers for j in neighbors for k in neighbors if j <=
+            k], dtype=torch.int32),
+    )
+
+    atomsel = Labels(
+        names=["atom"],
+        values=torch.tensor(ids_atoms, dtype=torch.int64).unsqueeze(-1),
+    )
+
+    systems = systems_to_torch(traj, dtype=torch.float64)
+    soap_block = eval_SOAP(systems[:1], calculator, sel, atomsel)
+    first_soap = soap_block.values.numpy()
+    #first_soap = eval_PETMAD(traj[:1], atomsel)
+    
+    atomsel_element = [[idx for idx, label in enumerate(soap_block.samples.values.numpy()) if label[2] == atom_type] for atom_type in centers]
+    
+    maxlag = interval
+    buffer = np.zeros((first_soap.shape[0], maxlag, first_soap.shape[1]))
+    inframe = np.zeros((len(atomsel_element), len(systems), first_soap.shape[0], first_soap.shape[1]))
+    delta=np.zeros(maxlag)
+    delta[maxlag//2]=1
+    kernel=gaussian_filter(delta,sigma=(maxlag-1)//(2)) #gaussian_filter(delta,sigma=(maxlag-1)//(2*3)) # cutoff at 3 sigma, leaves 0.1%
+    kernel=np.ones(kernel.shape)
+    kernel /= np.sum(kernel)
+    ntimesteps = np.zeros(len(atomsel_element), dtype=int)
+    
+    for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Computing SOAPs"):
+        new_soap_values = eval_SOAP([system], calculator, sel, atomsel).values.numpy()
+        new_soap_values = spatial_averaging(system, new_soap_values, sigma, ids_atoms)
+        #new_soap_values = eval_PETMAD([traj[fidx]], atomsel)
+        if fidx >= maxlag:
+            roll_kernel = np.roll(kernel, fidx%maxlag)
+            avg_soap = np.einsum("j,ija->ia", roll_kernel, buffer) #smoothen
+            for atom_type_idx, atom_type in enumerate(atomsel_element):
+                inframe[atom_type_idx, ntimesteps[atom_type_idx]] = avg_soap[atom_type] # T, N , S
+                ntimesteps[atom_type_idx] += 1
+
+        buffer[:,fidx%maxlag,:] = new_soap_values
+    
+    outputs = []
+    for atom_type_idx, atom_type in enumerate(atomsel_element):
+        #out = np.zeros((ntimesteps[atom_type_idx], first_soap.shape[0], first_soap.shape[1]))
+        out = inframe[atom_type_idx, :ntimesteps[atom_type_idx]] # real T, N, S
+        mus = np.mean(out, axis=(0,1))
+        stds = np.std(out, axis=(0,1))
+        outputs.append((out - mus)/np.sqrt(stds))
+    
+    return outputs, soap_block.properties # trim zeros from the back 
+
 
 @profile
 def SOAP_mean(traj, interval, ids_atoms, HYPER_PARAMETERS, centers, neighbors):

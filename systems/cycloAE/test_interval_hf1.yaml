@@ -4,8 +4,12 @@ system: cycloAE-20fsdump
 specifier: ALLCper_structure_concat
 interval: 
   - 1
+  - 10
+  - 50
+  - 100
+  - 250
 
-n_cumulants: 5
+n_cumulants: 4
 sigma: 
   - 5
 spatial_cutoff: 
@@ -20,7 +24,7 @@ train_selected_atoms: 62
 test_selected_atoms: 62 #[705, 702, 699, 696, 693, 690, 687, 684, 681, 678, 675, 672, 669, 666, 663, 660] #only ice
 #test_selected_atoms: 50
 methods: 
-  - PCA
+  - CumulantPCA
   #- LDA
   #- TICA
 

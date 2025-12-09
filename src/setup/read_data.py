@@ -6,6 +6,7 @@ import random
 
 def read_trj(file, index=':'):
     trj = ase.io.read(file, index=index)
+    print(f'Read trajectory with {len(trj)} frames from {file}')
     for structure in trj:
         structure.wrap()
     #fig, ax = plt.subplots()
