@@ -1,0 +1,12 @@
+# first delete MW site lines in .gro
+
+in VMD:
+set oxy [atomselect top "name OW"]
+$oxy set type 1
+set hw [atomselect top "name HW1 HW2"]
+$hw set type 2
+
+topo retypebonds
+topo guessangles
+
+topo writelammpsdata output.data full ATOMS

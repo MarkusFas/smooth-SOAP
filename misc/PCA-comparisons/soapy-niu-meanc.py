@@ -511,7 +511,12 @@ selection_torch = Labels_torch(
     values=torch.tensor([[i,j,k] for i in [8] for j in [1,8] for k in [1,8] if j <=
         k], dtype=torch.int32),
 )
-
+selection_torch = Labels_torch(
+    names=["center_type", "neighbor_1_type", "neighbor_2_type"],
+    #values=np.array([[8,1,1],[8,8,1],[8,8,8]], dtype=np.int32),
+    values=torch.tensor([[i,j,k] for i in [6] for j in [1,6,7,8] for k in [1,6,7,8] if j <=
+        k], dtype=torch.int32),
+)
 
 
 # load trj only once 
@@ -524,13 +529,17 @@ selection_torch = Labels_torch(
 #trajE_mol = aseio.read('prodE-hf.pdb', index='::10')[:]
 #print('done with E')
 # water
-trajA_mol = aseio.read('/Users/markusfasching/EPFL/Work/project1/scripts/SOAP-CV/traj_water_crop.xyz', index='::1')[:]
+#trajA_mol = aseio.read('/Users/markusfasching/EPFL/Work/project1/scripts/SOAP-CV/traj_water_crop.xyz', index='::1')[:]
+trajA_mol = aseio.read('/Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/chignolin/ctrl_270/metad_folded.pdb', index='::1')
 #trajA_mol = trajA_mol[:int(0.5*len(trajA_mol))]
 print('done with A', len(trajA_mol))
-trajE_mol = aseio.read('/Users/markusfasching/EPFL/Work/project1/scripts/SOAP-CV/traj_ice_crop.xyz', index='::1')[:]
+#trajE_mol = aseio.read('/Users/markusfasching/EPFL/Work/project1/scripts/SOAP-CV/traj_ice_crop.xyz', index='::1')[:]
+trajE_mol = aseio.read('/Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/chignolin/ctrl_270/metad_unfolded.pdb', index='::1')
 #trajE_mol = trajE_mol[:int(0.5*len(trajA_mol))]
 print('done with E', len(trajE_mol))
 trajtest = aseio.read('/Users/markusfasching/EPFL/Work/project1/scripts/SOAP-CV/traj_ice_crop.xyz', index=':1')
+trajtest = trajA_mol + trajE_mol
+trajtest = trajtest[::10]
 #trajtest = trajtest[:int(len(trajtest)*0.5)]
 len(trajtest)
 print('done', len(trajtest))
@@ -547,17 +556,18 @@ atoms = trajA_mol[0]
 # use only C atoms
 ids_atoms = [atom.index for atom in atoms if atom.symbol == 'C']
 # use a fifth of all oxygens for water and ice!
-ids_atoms = [atom.index for atom in [atom for atom in atoms if atom.symbol =='O'][::1]]
+#ids_atoms = [atom.index for atom in [atom for atom in atoms if atom.symbol =='O'][::1]]
 atoms = trajtest[0]
-ids_atoms_test = [atom.index for atom in [atom for atom in atoms if atom.symbol =='O']]
+#ids_atoms_test = [atom.index for atom in [atom for atom in atoms if atom.symbol =='O']]
+ids_atoms_test = ids_atoms
 print('len ids_atoms', len(ids_atoms))
 print('len ids_Atoms_test', len(ids_atoms_test))
 print('test length', len(atoms))
 from sklearn.preprocessing import StandardScaler
 from copy import deepcopy 
 for cutoff in [5.0]: #[0.5, 0.1, 0.01]:
-    for maxang in [6]: #[0.1, 0.05, 0.01]:
-        for maxrad in [6]:
+    for maxang in [3]: #[0.1, 0.05, 0.01]:
+        for maxrad in [3]:
             HYPER_PARAMETERS = {
                 "cutoff": {
                     "radius": cutoff, #4 #5 #6
@@ -624,7 +634,7 @@ for cutoff in [5.0]: #[0.5, 0.1, 0.01]:
                 y_test[nframes][icetest] = 1 # ICE --> 1
                 #y_test[nframes][interfacetest] = 2 # INTERFACE --> 2
 
-            for SIGMA in [5, 200, 25, 100]:               
+            for SIGMA in [1]: #[5, 200, 25, 100]:               
                 
                 eigvals_lda, eigvecs_lda, projected_test_lda, S_B_lda, S_W_lda = lda_model_all_meanC_ridge(
                                                     timeseriesA_train, 
@@ -638,7 +648,7 @@ for cutoff in [5.0]: #[0.5, 0.1, 0.01]:
                                                     timeseriesA_train, 
                                                     timeseriesE_train, 
                                                     timeseries_test,
-                                                    AVG_IND=True,
+                                                    AVG_IND=False, #True
                                                     SIGMA=SIGMA,
                                                     )
 
@@ -666,7 +676,7 @@ for cutoff in [5.0]: #[0.5, 0.1, 0.01]:
                 #X_test_proj = X_test_proj.transpose(0,2,1,3).reshape(4, -1, X_test_proj.shape[-1]) #swap atom and time axis
                 X_test_proj = X_test_proj.transpose(0,2,1,3).reshape(4, -1, X_test_proj.shape[-1]) #swap atom and time axis to model, T, C, S
                 #y_test = np.concatenate((np.ones(timeseriesA_test.shape[1]), np.zeros(timeseriesE_test.shape[1])))
-                y_test = y_test.reshape(-1) #flatten like we flatten X_test
+                y_test = y_test.reshape(-1)#flatten like we flatten X_test
                 """
                 print('avg2avg')
                 print('gaussianaverage', gaussian_averageA.shape)
@@ -738,7 +748,7 @@ for cutoff in [5.0]: #[0.5, 0.1, 0.01]:
                         # ax[i,n].scatter(testdata[:,pca1_i], testdata[:,pca2_i], c=y_test, cmap='coolwarm', alpha=0.5) #C=50
                         ax[i,n].scatter(testdata[:,pca1_i],
                                 testdata[:,pca2_i],s=1, c=y_test, cmap='viridis', alpha=0.05) #C=50
-                        ax[i,n].legend()
+                        #ax[i,n].legend()
                     """for j in range(4):
                         ax[i,j].set_xlim(mins[pca1_i], maxs[pca1_i])
                         ax[i,j].set_ylim(mins[pca2_i], maxs[pca2_i])

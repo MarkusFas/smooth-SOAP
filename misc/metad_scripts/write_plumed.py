@@ -5,10 +5,12 @@ import numpy as np
 
 plumed_fname = 'plumed.dat'
 selected_type = 8          # example, use the actual type for O in your system
-zmin, zmax = 10.0, 20.0
+zmin, zmax = -10.0, -4.0
 
 # Load the LAMMPS data file
-atoms = read(sys.argv[1], format="lammps-data")  # ASE Atoms object
+
+#atoms = read(sys.argv[1], format="lammps-data")  # ASE Atoms object
+atoms = read(sys.argv[1], format="gromacs")  # ASE Atoms object
 
 positions = atoms.get_positions()
 types = atoms.get_atomic_numbers()
