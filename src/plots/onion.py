@@ -21,7 +21,7 @@ def plot_onion(X, label, sel_atoms, traj):
     #add histogram
     T, N, P = X.shape
     data = X.reshape(-1, P)
-    ax.hist(data[:,0], bins=50, alpha=0.4)
+    ax.hist(data[:,0], bins=50, alpha=0.4, density=True)
     ax.set_xlabel('PCA 1')
     ax.set_ylabel('Density')
     ax.legend()
