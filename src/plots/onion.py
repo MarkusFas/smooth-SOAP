@@ -3,11 +3,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def plot_onion(X, fname):
+def plot_onion(X, label, sel_atoms, traj):
     # Select time resolution
     delta_t = 1
     # Create input array with the correct shape only for first X dim for now!
-    data = X[0].transpose(2,1,0)[:2,...]
+    data = X.transpose(2,1,0)[:2,...]
     reshaped_input_data = helpers.reshape_from_dnt(data, delta_t)
     # Run Onion Clustering
     state_list, labels = onion_multi(reshaped_input_data)
@@ -18,8 +18,12 @@ def plot_onion(X, fname):
         var = state.sigma[0]**2
         y = (1/np.sqrt(2*np.pi*var)) * np.exp(-0.5*((x - mu)**2 / var))
         ax.plot(x, y, label=f'cluster_{i}')
+    #add histogram
+    T, N, P = X.shape
+    data = X.reshape(-1, P)
+    ax.hist(data[:,0], bins=50, alpha=0.4)
     ax.set_xlabel('PCA 1')
     ax.set_ylabel('Density')
     ax.legend()
     plt.tight_layout()
-    plt.savefig(fname + '_onion_states.png', dpi=300)
+    plt.savefig(label + '_onion_states.png', dpi=300)

@@ -6,7 +6,7 @@ import warnings
 from src.descriptors.PETMAD import PETMAD_descriptor
 from src.descriptors.SOAP import SOAP_descriptor_special
 from src.descriptors.model_soap import SOAP_CV, CumulantSOAP_CV
-from src.methods import PCA, IVAC, TICA, TILDA, TempPCA, PCAfull, PCAtest, LDA, SpatialPCA, SpatialTempPCA, ScikitPCA, CumulantPCA, CumulantIVAC, DistinctPCA, PCAnorm
+from src.methods import PCA, IVAC, TICA, TILDA, TempPCA, PCAfull, PCAtest, LDA, SpatialPCA, SpatialTempPCA, ScikitPCA, CumulantPCA, CumulantIVAC, DistinctPCA, PCAnorm, SpatialIVAC
 from src.setup.simulation import run_simulation
 from src.setup.simulation_test import run_simulation_test
 from src.setup.read_data import read_trj
@@ -111,7 +111,6 @@ def check_analysis_inputs(trajs, test_trajs, **kwargs):
         else:
             kwargs['methods'] = [kwargs['methods']]
     
-
     if not isinstance(kwargs['model_proj_dims'], list):
         if not isinstance(kwargs['model_proj_dims'], int):
             raise TypeError("test_selected_atoms must be integer or list of integers")
@@ -296,6 +295,10 @@ def setup_simulation(**kwargs):
                                     lag_step = kwargs.get("lag_step")
                                     descriptor = CumulantSOAP_CV(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors, n_cumulants)
                                     method_obj = CumulantIVAC(descriptor, interval, max_lag, min_lag, lag_step, ridge_alpha, n_cumulants, run_dir)
+                                elif method.upper() == 'SPATIALIVAC':
+                                    n_cumulants = 1
+                                    descriptor = CumulantSOAP_CV(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors, n_cumulants)
+                                    method_obj = SpatialIVAC(descriptor, interval, ridge_alpha, n_cumulants, run_dir)
                                 else:
                                     raise NotImplementedError(f"Method must be one of {implemented_opt}, got {method}")
 
