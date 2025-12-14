@@ -1,4 +1,4 @@
-import torch 
+import torch
 from abc import ABC, abstractmethod
 import metatensor.torch as mts
 from metatomic.torch import System, ModelEvaluationOptions, ModelOutput, systems_to_torch, load_atomistic_model
@@ -7,15 +7,12 @@ from featomic.torch import SoapPowerSpectrum
 import numpy as np
 from tqdm import tqdm
 from scipy.ndimage import gaussian_filter
-import ase.neighborlist
-from vesin import ase_neighbor_list
+from vesin import NeighborList
 from memory_profiler import profile
-from sklearn.linear_model import Ridge 
+from sklearn.linear_model import Ridge
 
 from src.transformations.PCAtransform import PCA_obj
 from src.methods.BaseMethod import FullMethodBase
-
-
 
 
 class SpatialIVAC(FullMethodBase):
@@ -266,27 +263,44 @@ class SpatialIVAC(FullMethodBase):
 
 
 
+class SpatialIVACnorm(FullMethodBase):
 
-
-
-
-
-
-
-
-
-
-class CumulantIVAC(FullMethodBase):
-
-
-    def __init__(self, descriptor, interval, max_lag, min_lag, lag_step, ridge_alpha, n_cumulants, root):
-        self.name = 'CumulantIVAC'
-        self.max_lag = max_lag
-        self.min_lag = min_lag
-        self.lag_step = lag_step
+    def __init__(self, descriptor, interval, ridge_alpha, n_cumulants, root):
+        self.name = 'SpatialIVAC'
         self.n_cumulants = n_cumulants
-        super().__init__(descriptor, interval, lag='ivac', root=root, sigma=0, ridge_alpha=ridge_alpha, method=self.name)
+        super().__init__(descriptor, interval, lag=0, root=root, sigma=0, ridge_alpha=ridge_alpha, method=self.name)
 
+
+
+    def make_neighborlist(self, cutoff):
+        self.nlist = NeighborList(cutoff=cutoff, full_list=True) # TODO: debatable if full lsit or not
+
+    def spatial_correlate(self, system, sel_atoms):
+        pos = system.positions[sel_atoms]
+        cell = system.cell
+        self.make_neighborlist(cutoff=20) # example cutoff
+        i, j, S, d = self.nlist.compute(
+            points=pos,
+            box=cell, 
+            periodic=True,
+            quantities="ijSd"
+        )
+        sort_idx = np.lexsort((d, j, i))  # primary i, secondary j, tertiary d
+
+        i_sorted = i[sort_idx]
+        j_sorted = j[sort_idx]
+        d_sorted = d[sort_idx]
+        S_sorted = S[sort_idx]
+
+        mask = np.ones(len(i_sorted), dtype=bool)
+        mask[1:] = (i_sorted[1:] != i_sorted[:-1]) | (j_sorted[1:] != j_sorted[:-1])
+
+        i_final = i_sorted[mask]
+        j_final = j_sorted[mask]
+        d_final = d_sorted[mask]
+        S_final = S_sorted[mask]
+
+        return i_final, j_final, S_final, d_final
 
     def predict(self, traj, selected_atoms):
         """
@@ -317,16 +331,37 @@ class CumulantIVAC(FullMethodBase):
             projected = []
             for system in systems:
                 descriptor = self.descriptor.calculate([system])
-                #cum_descriptor = self.descriptor.compute_cumulants(descriptor, self.n_cumulants)
-                #descriptor_proj = trafo.project(cum_descriptor)
-                descriptor_proj = trafo.project(descriptor)
+                cum_descriptor = self.descriptor.compute_cumulants(descriptor, self.n_cumulants)
+                descriptor_proj = trafo.project(cum_descriptor)
                 projected.append(descriptor_proj)
                 # TODO:
                 #self.ridge.fit(descriptor, descriptor_proj)
             projected_per_type.append(np.stack(projected, axis=0).transpose(1, 0, 2))
 
         return projected_per_type  # shape: (#centers ,N_atoms, T, latent_dim)
-    
+
+
+    def predict_ridge(self, traj, selected_atoms):
+        self.selected_atoms = selected_atoms
+        self.descriptor.set_samples(selected_atoms)
+        systems = systems_to_torch(traj, dtype=torch.float64)
+       
+        projected_per_type = []
+
+        for idx, trafo in enumerate(self.transformations):
+            projected = []
+            for system in systems:
+                descriptor = self.descriptor.calculate([system])
+                cum_descriptor = self.descriptor.compute_cumulants(descriptor, self.n_cumulants)
+            
+                #ridge_pred = self.ridge[idx].predict(cum_descriptor)
+                ridge_pred = self.ridge[idx].predict(descriptor)
+                projected.append(ridge_pred)
+               
+            projected_per_type.append(np.stack(projected, axis=0).transpose(1, 0, 2))
+
+        return projected_per_type
+
 
     def compute_COV(self, traj):
         """
@@ -357,103 +392,70 @@ class CumulantIVAC(FullMethodBase):
         systems = systems_to_torch(traj, dtype=torch.float64)
         soap_block = self.descriptor.calculate(systems[:1])
         first_soap = self.descriptor.compute_cumulants(soap_block, self.n_cumulants)
-        self.atomsel_element = [[0] for atom_type in self.descriptor.centers]
+        first_soap_cum = self.descriptor.compute_cumulants(soap_block, self.n_cumulants)
+        
+        self.atomsel_element = [[idx for idx, label in enumerate(self.descriptor.soap_block.samples.values.numpy()) if label[2] == atom_type] for atom_type in self.descriptor.centers]
         if soap_block.shape[0] == 1:
             self.atomsel_element = [[0] for atom_type in self.descriptor.centers]
-        buffer = np.zeros((first_soap.shape[0], self.interval, first_soap.shape[1]))
-        buffer_t = np.zeros((first_soap.shape[0], self.max_lag+1, first_soap.shape[1]))
-        cov_t = np.zeros((len(self.atomsel_element), first_soap.shape[1], first_soap.shape[1],))
-        corr_t = np.zeros((len(self.atomsel_element), first_soap.shape[1], first_soap.shape[1],))
-        sum_soaps = np.zeros((len(self.atomsel_element),first_soap.shape[1],))
-        sum_soaps_corr = np.zeros((len(self.atomsel_element),first_soap.shape[1],))
-        nsmp = np.zeros(len(self.atomsel_element))
-        nsmp_corr = np.zeros(len(self.atomsel_element))
-        delta = np.zeros(self.interval)
-        delta[self.interval//2] = 1
-        kernel = gaussian_filter(delta,sigma=(self.interval-1)//(2)) # cutoff at 3 sigma, leaves 0.1%
-        kernel /= kernel.sum()
-
-        lags = np.arange(self.min_lag, self.max_lag + self.lag_step, self.lag_step)
         
+        buffer = np.zeros((first_soap.shape[0], self.interval, first_soap.shape[1]))
+        buffer_cum = np.zeros((first_soap.shape[0], self.interval, first_soap_cum.shape[1]))
+        cov_t = np.zeros((len(self.atomsel_element), first_soap.shape[1], first_soap.shape[1],))
+        cov_t_cum = np.zeros((len(self.atomsel_element), first_soap_cum.shape[1], first_soap_cum.shape[1],))
+        sum_soaps = np.zeros((len(self.atomsel_element),first_soap.shape[1],))
+        sum_soaps_spat = np.zeros((len(self.atomsel_element),first_soap_cum.shape[1],))
+        sum_soaps_dist = np.zeros((len(self.atomsel_element),first_soap_cum.shape[1],))
+        nsmp = np.zeros(len(self.atomsel_element))
+        delta=np.zeros(self.interval)
+        delta[self.interval//2]=1
+        kernel=gaussian_filter(delta,sigma=(self.interval-1)//(2)) # cutoff at 3 sigma, leaves 0.1%
+        kernel /= kernel.sum()
+        ntimesteps = np.zeros(len(self.atomsel_element), dtype=int)
+
         for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Computing SOAPs"):
-            new_soap_values = self.descriptor.calculate([system])
-            cum_soap_values = self.descriptor.compute_cumulants(new_soap_values, self.n_cumulants)
-            new_soap_values = None
-            #cumulant
-            buffer[:,fidx%self.interval,:] = cum_soap_values
-            if fidx >= self.interval-1:
+            new_soap_values = self.descriptor.calculate([system]) #N, S
+            if fidx >= self.interval:
+                roll_kernel = np.roll(kernel, fidx%self.interval)
                 # computes a contribution to the correlation function
                 # the buffer contains data from fidx-maxlag to fidx. add a forward ACF
-                roll_kernel = np.roll(kernel, (fidx+1)%self.interval)
                 avg_soap = np.einsum("j,ija->ia", roll_kernel, buffer) #smoothen
-                #avg_soap = self.spatial_averaging(system, avg_soap, self.sigma)
-                buffer_t[:,fidx%(self.max_lag+1),:] = avg_soap
+                for atom_type_idx, atom_type in enumerate(self.atomsel_element):
+                    sum_soaps[atom_type_idx] += avg_soap[atom_type].sum(axis=0)
+                    cov_t[atom_type_idx] += np.einsum("ia,ib->ab", avg_soap[atom_type], avg_soap[atom_type]) #sum over all same atoms (have already summed over all times before) 
+                    a,b,S,d = self.spatial_correlate(system, atom_type) # return nl indexes of center, neighbor and dist
+                    dist = 1/(4.0*np.pi*d**2)
+                    sum_soaps_dist[atom_type_idx] += np.sum(dist)
+                    sum_soaps_spat[atom_type_idx] += np.einsum('m,mk->k', dist, avg_soap[a,:] + avg_soap[b,:]) / 2  # weighted mean over all pairs
+                    cov_t_cum[atom_type_idx] += np.einsum("n, ni,nj->ij", dist , avg_soap[a,:], avg_soap[b,:]) #sum over all same atoms (have already summed over all times before) 
+                    nsmp[atom_type_idx] += len(atom_type)
+                    ntimesteps[atom_type_idx] += 1
 
-            for i, lag in enumerate(lags):
-                if fidx >= self.interval + lag - 1:
-
-                    # computes a contribution to the correlation function
-                    # the buffer contains data from fidx-maxlag to fidx. add a forward ACF
-                    soap_0 = buffer_t[:,fidx%(self.max_lag + 1),:]
-                    soap_lag = buffer_t[:,(fidx-lag)%(self.max_lag + 1),:]
-                    #soap_lags = [buffer_t[:,(fidx-lag)%(self.max_lag + 1),:] for lag in lags]
-                    for atom_type_idx, atom_type in enumerate(self.atomsel_element):
-                        # C0
-                        #delta_soap_0 = soap_0[atom_type] - soap_mu[atom_type_idx] 
-                        sum_soaps[atom_type_idx] += soap_0[atom_type].sum(axis=0)
-                        cov_t[atom_type_idx] += np.einsum("ia,ib->ab", soap_0[atom_type], soap_0[atom_type])# Ctau
-                        #delta_soap_lag = soap_lag[atom_type] - soap_mu[atom_type_idx]
-                        sum_soaps[atom_type_idx] += soap_lag[atom_type].sum(axis=0)
-                        cov_t[atom_type_idx] += np.einsum("ia,ib->ab", soap_lag[atom_type], soap_lag[atom_type])
-                        #cov_t[atom_type_idx] += np.einsum("ia,ib->ab", delta_soap_lag, delta_soap_lag) #sum over all same atoms (have already summed over all times before)
-                        #corr_t[atom_type_idx] += np.einsum("ia,ib->ab", delta_soap_lag, delta_soap_0)
-                        corr_t[atom_type_idx] += np.einsum("ia,ib->ab", soap_0[atom_type], soap_lag[atom_type])
-                        #nsmp[atom_type_idx] += (len(soap_lags) + 1)*len(atom_type)
-                        nsmp[atom_type_idx] += 2 * len(atom_type)
-                        nsmp_corr[atom_type_idx] += len(atom_type)
-                        #ntimesteps_corr[atom_type_idx] += 1
-                        #sum_soaps_corr[atom_type_idx] += soap_0[atom_type].sum(axis=0)
-                        #delta_soap_0 = soap_0[atom_type] - soap_0_mu[atom_type_idx] 
-                        
-                        #soap_0_mu[atom_type_idx] += delta_soap_0.mean(axis=0) / ntimesteps_corr[atom_type_idx]
-                        #TODO: test for only one
-                        #for i, soap_lag in enumerate(soap_lags):
-                            #delta_soap_lag[i] = soap_lag[atom_type] - soap_lag_mu[atom_type_idx, i]
-                        #   delta_soap_lag[i] = soap_lag[atom_type] - soap_mu[atom_type_idx]
-                            #soap_lag_mu[atom_type_idx, i] += delta_soap_lag[i].mean(axis=0) / ntimesteps_corr[atom_type_idx]
-                            #sum over all same atoms (have already summed over all times before) 
+            buffer[:,fidx%self.interval,:] = new_soap_values
 
 
-        mu = np.zeros((len(self.atomsel_element), cum_soap_values.shape[1]))
-        cov = np.zeros((len(self.atomsel_element), cum_soap_values.shape[1], cum_soap_values.shape[1]))
-        #mu_corr = np.zeros((len(self.atomsel_element), new_soap_values.shape[1]))
-        corr = np.zeros((len(self.atomsel_element), cum_soap_values.shape[1], cum_soap_values.shape[1]))
-        
+        mu = np.zeros((len(self.atomsel_element), new_soap_values.shape[1]))
+        cov = np.zeros((len(self.atomsel_element), new_soap_values.shape[1], new_soap_values.shape[1]))
+        mu_spat = np.zeros((len(self.atomsel_element), new_soap_values.shape[1]))
+        cov_spat = np.zeros((len(self.atomsel_element), new_soap_values.shape[1], new_soap_values.shape[1]))
+
         # autocorrelation matrix - remove mean
         for atom_type_idx, atom_type in enumerate(self.atomsel_element):
             mu[atom_type_idx] = sum_soaps[atom_type_idx]/nsmp[atom_type_idx]
             # COV = 1/N ExxT - mumuT
             cov[atom_type_idx] = cov_t[atom_type_idx]/nsmp[atom_type_idx] - np.einsum('i,j->ij', mu[atom_type_idx], mu[atom_type_idx])
-            
-            #mu_corr[atom_type_idx] = sum_soaps_corr[atom_type_idx]/nsmp_corr[atom_type_idx]
             # COV = 1/N ExxT - mumuT
-            corr[atom_type_idx] = corr_t[atom_type_idx]/(nsmp_corr[atom_type_idx]) - np.einsum('i,j->ij', mu[atom_type_idx], mu[atom_type_idx])
-        
-        self.cov = cov
-        self.corr = corr
-        self.mu = mu #soap_mu
-        #self.mu_corr = mu_corr
-        #return soap_lag_mu.mean(axis=1), corr, cov
-        return mu, corr, cov
-        #return soap_mu, corr, [np.eye(c.shape[0]) for c in corr]
+            mu_spat[atom_type_idx] = sum_soaps_spat[atom_type_idx] / sum_soaps_dist[atom_type_idx]
+            cov_spat[atom_type_idx] = cov_t_cum[atom_type_idx]/sum_soaps_dist[atom_type_idx] - np.einsum('i,j->ij', mu_spat[atom_type_idx], mu_spat[atom_type_idx])
+
+        self.cov_tot = cov
+        return mu, cov_spat, cov
 
 
     def fit_ridge_nonincremental(self, traj):
         systems = systems_to_torch(traj, dtype=torch.float64)
         soap_block = self.descriptor.calculate(systems[:1], selected_samples=self.descriptor.selected_samples)
         print(soap_block.shape)
-        first_soap = soap_block
-        #first_soap = self.descriptor.compute_cumulants(soap_block, self.n_cumulants)
+        first_soap = self.descriptor.compute_cumulants(soap_block, self.n_cumulants)
         buffer = np.zeros((first_soap.shape[0], self.interval, first_soap.shape[1]))
         
         delta=np.zeros(self.interval)
@@ -471,7 +473,7 @@ class CumulantIVAC(FullMethodBase):
             avg_soaps_projs=np.zeros((first_soap.shape[0],len(systems)-self.interval, avg_soap_proj.shape[-1]))
             for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Fit Ridge"):
                 new_soap_values = self.descriptor.calculate([system], selected_samples=self.descriptor.selected_samples)
-                #cum_soap_values = self.descriptor.compute_cumulants(new_soap_values, self.n_cumulants)
+                cum_soap_values = self.descriptor.compute_cumulants(new_soap_values, self.n_cumulants)
                 new_soap_values = None
                 if fidx >= self.interval:
                     roll_kernel = np.roll(kernel, fidx%self.interval)
@@ -481,9 +483,9 @@ class CumulantIVAC(FullMethodBase):
                     avg_soap_proj = trafo.project(avg_soap)
                     #print('projshape', avg_soap_proj.shape)
                     #print('nonprog.shape',new_soap_values.shape)
-                    soap_values[:,fidx-self.interval,:] = new_soap_values #cum_soap_values
+                    soap_values[:,fidx-self.interval,:] = cum_soap_values
                     avg_soaps_projs[:,fidx-self.interval,:] = avg_soap_proj
-                buffer[:,fidx%self.interval,:] = new_soap_values #cum_soap_values
+                buffer[:,fidx%self.interval,:] = cum_soap_values
             print('soapvals',soap_values.dtype)
             print('soapvals',soap_values.shape)
             print('avg_soaps_proj',avg_soaps_projs.shape)
@@ -498,28 +500,6 @@ class CumulantIVAC(FullMethodBase):
             self.ridge[idx].fit(soap_values, avg_soaps_projs)
       
 
-    def predict_ridge(self, traj, selected_atoms):
-        self.selected_atoms = selected_atoms
-        self.descriptor.set_samples(selected_atoms)
-        systems = systems_to_torch(traj, dtype=torch.float64)
-       
-        projected_per_type = []
-
-        for idx, trafo in enumerate(self.transformations):
-            projected = []
-            for system in systems:
-                descriptor = self.descriptor.calculate([system])
-                #cum_descriptor = self.descriptor.compute_cumulants(descriptor, self.n_cumulants)
-            
-                #ridge_pred = self.ridge[idx].predict(cum_descriptor)
-                ridge_pred = self.ridge[idx].predict(descriptor)
-                projected.append(ridge_pred)
-               
-            projected_per_type.append(np.stack(projected, axis=0).transpose(1, 0, 2))
-
-        return projected_per_type
-      
-
     def log_metrics(self):
         """
         Log metrics from the run, including the covariances.
@@ -529,7 +509,18 @@ class CumulantIVAC(FullMethodBase):
         -------
         empty
         """
+        metrics = np.array([[np.trace(tot_cov)] for tot_cov in self.cov_tot])
+        header = ["spatialCov", "tempCov"]
 
+        # Make metrics a 2D row vector: shape (1, 2)
+        np.savetxt(
+            self.label + "_.csv",
+            metrics,
+            fmt="%.6f",
+            delimiter="\t",
+            header="\t".join(header),
+            comments=""
+        )
         for i, trafo in enumerate(self.transformations):
             torch.save(
                 torch.tensor(trafo.eigvals.copy()),
@@ -550,4 +541,3 @@ class CumulantIVAC(FullMethodBase):
                 self.descriptor.soap_block.properties.values,
                 self.label + f"_center{self.descriptor.centers[i]}" + f"_properties.pt",
             )
-
