@@ -11,7 +11,7 @@ import chemiscope
 from src.plots.onion import plot_onion
 from src.plots.cov_heatmap import plot_heatmap
 from src.plots.timeseries import plot_projection_atoms, plot_projection_atoms_models
-from src.plots.histograms import plot_2pca, plot_2pca_atoms, plot_2pca_height
+from src.plots.histograms import plot_2pca, plot_2pca_atoms, plot_2pca_height, plot_histogram
 from src.classifier.Logreg import run_logistic_regression
 
 def run_simulation(trj, trj_test, methods_intervals, **kwargs):
@@ -117,7 +117,12 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
             plots = kwargs.get("plots", [])
 
             if "onion" in plots:
-                plot_onion(X, method.label)
+                for i, proj in enumerate(X):
+                    plot_onion(proj, method.label + f'_{i}', test_atoms, trj_predict)
+                if kwargs["ridge"]:
+                    for i, proj in enumerate(X_ridge):
+                        plot_onion(proj, method.label + f'_ridge_{i}', test_atoms, trj_predict)
+                print('Plotted histogram of PCA first component')
 
             if "projection" in plots:
                 plot_projection_atoms(X, [0,1,2,3], method.label, [method.interval]) # need to transpose to T,N,P
@@ -151,6 +156,14 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
                 print('Plotted scatterplot of PCA height labels')
 
             print('Plots saved at ' + method.label)
+
+            if "histogram" in plots:
+                for i, proj in enumerate(X):
+                    plot_histogram(proj, method.label + f'_{i}', test_atoms, trj_predict)
+                if kwargs["ridge"]:
+                    for i, proj in enumerate(X_ridge):
+                        plot_histogram(proj, method.label + f'_ridge_{i}', test_atoms, trj_predict)
+                print('Plotted histogram of PCA first component')
 
             if "cs" in plots:
                 cs = chemiscope.show(trj[0],

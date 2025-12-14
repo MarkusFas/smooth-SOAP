@@ -43,13 +43,26 @@ def plot_2pca_height(X, label, sel_atoms, traj):
     fig, ax = plt.subplots(1,1, figsize=(12,6))
     positions = np.array([atoms.positions[sel_atoms, 2] for atoms in traj])
     for i, trj in enumerate(X.transpose(1,0,2)): # shape N, T, P
-        color = 'green' if sel_atoms[i] > 256*3//2 else 'orange'
+        #color = 'green' if sel_atoms[i] > 256*3//2 else 'orange'
+        color = np.arange(len(trj[:,0]))
         ax.scatter(
             trj[:,0], 
             positions[:,i], #first PCA component
-            color=color, 
+            c=color, 
+            cmap='RdYlBu', 
+            vmin=0, #np.min(color), 
+            vmax=len(trj[:,0]), #np.max(color),
             alpha=0.2,
             s=2.5,
         )
     plt.savefig(label + f'_projection_height.png', dpi=200)
 
+
+@mpltex.acs_decorator
+def plot_histogram(X, label, sel_atoms, traj):
+    fig, ax = plt.subplots(1,1, figsize=(12,6))
+    positions = np.array([atoms.positions[sel_atoms, 2] for atoms in traj])
+    T, N, P = X.shape
+    data = X.reshape(-1, P)
+    ax.hist(data[:,0], bins=50, alpha=0.7)
+    plt.savefig(label + f'_histogram.png', dpi=200)
