@@ -1,13 +1,7 @@
-# systems/icewater/test.yaml
-
-system: icewaterinterface_CumPCA_med265
-specifier: ALL200
+system: icewaterinterface_cumpca_metad_big_265
+specifier: ALL_train_on_300_test200_500fsdump
 interval: 
   - 1
-  - 10
-  - 100
-  - 250
-
 
 n_cumulants: 3
 sigma: 
@@ -20,27 +14,36 @@ spatial_cutoff:
 lag: 100
 max_lag: 500
 min_lag: 10
-lag_step: 50
-train_selected_atoms: 200
-test_selected_atoms: null #[705, 522, 699, 696, 693, 690, 513, 684, 540, 678, 570, 672, 669, 666, 591, 600] #only ice
-#test_selected_atoms: 50
+lag_step: 25
+train_selected_atoms: 300
+#test_selected_atoms: [705, 522, 699, 696, 693, 690, 513, 684, 540, 678, 570, 672, 669, 666, 591, 600] #only ice
+test_selected_atoms: 300
 methods: 
-  - PCAFull
+  #- PCAFull
+  #- IVAC
+  - TempPCA
+  #- PCAFull
   #- CumulantPCA
   #- CumulantIVAC
-  #- SpatialPCA
+
+  - CumulantPCA
+  - CumulantIVAC
+  - SpatialIVACnorm
+  - SpatialIVAC
   #- TICA
 
 input_params:
   fname: 
     #- /Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/interfaces/250_275_fast/positions.lammpstrj
-    - /Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/metad/metad_interface/CumulantPCA/TIP4PICE/metad_med_265/positions.lammpstrj
+    - /Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/metad/metad_interface/CumulantPCA/TIP4PICE/metad_big_265/positions.lammpstrj
+    #- /Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/metad/metad_interface/TempPCA/opes_med_265/positions.lammpstrj
     #- /Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/interfaces/250_275_fast/positions.lammpstrj
     #/Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/interfaces/250_275_fast/positions.lammpstrj
     #250350- /Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/interfaces/low_freq/positions.lammpstrj
     #- /Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/icemeltinterface/TIP4P/positions.extxyz
   indices: 
-    - '::1'
+    - '::5'
+    #- '::1'
     #- '::250'
     #- '-1000:'
   concatenate: False
@@ -59,4 +62,4 @@ SOAP_params:
 
 output_per_structure: false
 model_save: False
-plots: ["projection", "pca", "onion", "pca_atoms", "pca_height"]
+plots: ["projection", "pca", "onion", "histogram", "pca_atoms", "pca_height"]
