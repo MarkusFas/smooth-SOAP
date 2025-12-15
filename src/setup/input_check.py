@@ -6,7 +6,13 @@ import warnings
 from src.descriptors.PETMAD import PETMAD_descriptor
 from src.descriptors.SOAP import SOAP_descriptor_special
 from src.descriptors.model_soap import SOAP_CV, CumulantSOAP_CV
-from src.methods import PCA, IVAC, TICA, TILDA, TempPCA, PCAfull, PCAtest, LDA, SpatialPCA, SpatialTempPCA, ScikitPCA, CumulantPCA, CumulantIVAC, DistinctPCA, PCAnorm, SpatialIVAC
+from src.methods import (
+    PCA, IVAC, TICA, TILDA, TempPCA, 
+    PCAfull, PCAtest, LDA, SpatialPCA, 
+    SpatialTempPCA, ScikitPCA, CumulantPCA, 
+    CumulantIVAC, DistinctPCA, PCAnorm, 
+    SpatialIVAC, SpatialIVACnorm,
+)
 from src.setup.simulation import run_simulation
 from src.setup.simulation_test import run_simulation_test
 from src.setup.read_data import read_trj
@@ -299,6 +305,10 @@ def setup_simulation(**kwargs):
                                     n_cumulants = 1
                                     descriptor = CumulantSOAP_CV(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors, n_cumulants)
                                     method_obj = SpatialIVAC(descriptor, interval, ridge_alpha, n_cumulants, run_dir)
+                                elif method.upper() == 'SPATIALIVACNORM':
+                                    n_cumulants = 1
+                                    descriptor = CumulantSOAP_CV(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors, n_cumulants)
+                                    method_obj = SpatialIVACnorm(descriptor, interval, ridge_alpha, n_cumulants, run_dir)
                                 else:
                                     raise NotImplementedError(f"Method must be one of {implemented_opt}, got {method}")
 
