@@ -1,0 +1,27 @@
+DEFAULT_PARAMS = {
+    "system": None,
+    "version": "v0",
+    "specifier": "default",
+
+    "interval": 100,
+    "lag": 0,
+    "methods": "PCA",
+    "train_selected_atoms": 20,
+    "test_selected_atoms": 20,
+
+    "input_params": {
+        "fname": None,
+        "indices": ":",
+    },
+
+    "descriptor": "SOAP",
+    "SOAP_params": {
+        "centers": [8],
+        "neighbors": [8,1],
+        "cutoff": 5.0,
+        "max_angular": 6,
+        "max_radial": 6,
+    },
+
+    "plots": ["projection"],
+}

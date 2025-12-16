@@ -15,4 +15,7 @@ package-dir = {"" = "src"}
 where = ["src"]
 
 [project.scripts]
-smoothsoap = "src.setup.launcher:main"
+smoothsoap = "smoothsoap.setup.launcher:main"
+
+[tool.setuptools.package-data]
+smoothsoap = ["**/*.yaml"]

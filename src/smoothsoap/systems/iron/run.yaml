@@ -1,0 +1,47 @@
+
+system: iron
+specifier: test
+interval: 
+  - 1
+
+n_cumulants: 3
+
+train_selected_atoms: 1000
+#test_selected_atoms: [705, 522, 699, 696, 693, 690, 513, 684, 540, 678, 570, 672, 669, 666, 591, 600] #only ice
+test_selected_atoms: 1000
+methods: 
+  - SpatialIVAC
+  - PCAFull
+  - IVAC
+  - TempPCA
+  #- PCAFull
+  #- CumulantPCA
+  #- CumulantIVAC
+  - CumulantPCA
+  - CumulantIVAC
+  - SpatialIVACnorm
+  #- TICA
+
+input_params:
+  fname: 
+     - ../../../../data/iron/pos000.xyz
+   
+  indices: 
+    - ':1'
+  concatenate: False
+
+ridge: true
+ridge_alpha: 
+  - 1e-5
+ridge_save: true
+descriptor: SOAP
+SOAP_params:
+  centers: [26]
+  neighbors: [26]
+  cutoff: 6
+  max_angular: 5
+  max_radial: 5
+
+output_per_structure: false
+model_save: False
+plots: ["projection", "pca", "onion", "histogram", "pca_atoms", "pca_height"]
