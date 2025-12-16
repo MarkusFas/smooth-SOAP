@@ -5,19 +5,19 @@ from itertools import chain
 import warnings
 from pathlib import Path
 
-from src.smoothsoap.descriptors.PETMAD import PETMAD_descriptor
-from src.smoothsoap.descriptors.SOAP import SOAP_descriptor_special
-from src.smoothsoap.descriptors.model_soap import SOAP_CV, CumulantSOAP_CV
-from src.smoothsoap.methods import (
+from smoothsoap.descriptors.PETMAD import PETMAD_descriptor
+from smoothsoap.descriptors.SOAP import SOAP_descriptor_special
+from smoothsoap.descriptors.model_soap import SOAP_CV, CumulantSOAP_CV
+from smoothsoap.methods import (
     PCA, IVAC, TICA, TILDA, TempPCA, 
     PCAfull, PCAtest, LDA, SpatialPCA, 
     SpatialTempPCA, ScikitPCA, CumulantPCA, 
     CumulantIVAC, DistinctPCA, PCAnorm, 
     SpatialIVAC, SpatialIVACnorm,
 )
-from src.smoothsoap.setup.simulation import run_simulation
-from src.smoothsoap.setup.simulation_test import run_simulation_test
-from src.smoothsoap.setup.read_data import read_trj
+from smoothsoap.setup.simulation import run_simulation
+from smoothsoap.setup.simulation_test import run_simulation_test
+from smoothsoap.setup.read_data import read_trj
 
 
 def check_file_input(**kwargs):
