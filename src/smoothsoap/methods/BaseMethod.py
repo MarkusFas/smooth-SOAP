@@ -16,7 +16,7 @@ from memory_profiler import profile
 from pathlib import Path
 from sklearn.linear_model import Ridge, SGDRegressor
 from sklearn.multioutput import MultiOutputRegressor
-from src.smoothsoap.transformations.PCAtransform import PCA_obj
+from smoothsoap.transformations.PCAtransform import PCA_obj
 
 
 class FullMethodBase(ABC):

@@ -8,11 +8,11 @@ from pathlib import Path
 from itertools import chain
 import chemiscope
 
-from src.smoothsoap.plots.onion import plot_onion
-from src.smoothsoap.plots.cov_heatmap import plot_heatmap
-from src.smoothsoap.plots.timeseries import plot_projection_atoms, plot_projection_atoms_models
-from src.smoothsoap.plots.histograms import plot_2pca, plot_2pca_atoms, plot_2pca_height, plot_histogram
-from src.smoothsoap.classifier.Logreg import run_logistic_regression
+from smoothsoap.plots.onion import plot_onion
+from smoothsoap.plots.cov_heatmap import plot_heatmap
+from smoothsoap.plots.timeseries import plot_projection_atoms, plot_projection_atoms_models
+from smoothsoap.plots.histograms import plot_2pca, plot_2pca_atoms, plot_2pca_height, plot_histogram
+from smoothsoap.classifier.Logreg import run_logistic_regression
 
 def run_simulation(trj, trj_test, methods_intervals, **kwargs):
     is_shared = False

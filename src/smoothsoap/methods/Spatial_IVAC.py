@@ -11,8 +11,8 @@ from vesin import NeighborList
 from memory_profiler import profile
 from sklearn.linear_model import Ridge
 
-from src.smoothsoap.transformations.PCAtransform import PCA_obj
-from src.smoothsoap.methods.BaseMethod import FullMethodBase
+from smoothsoap.transformations.PCAtransform import PCA_obj
+from smoothsoap.methods.BaseMethod import FullMethodBase
 
 
 class SpatialIVAC(FullMethodBase):

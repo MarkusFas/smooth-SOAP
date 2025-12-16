@@ -1,8 +1,8 @@
 # src/launcher/run_system.py
 from importlib.resources import files
 from pathlib import Path
-from src.smoothsoap.setup.defaults import DEFAULT_PARAMS
-from src.smoothsoap.setup.input_check import setup_simulation
+from smoothsoap.setup.defaults import DEFAULT_PARAMS
+from smoothsoap.setup.input_check import setup_simulation
 import yaml
 import sys
 
@@ -26,7 +26,7 @@ def merge_params(defaults, updates, path="root"):
     return defaults
 
 
-if __name__ == "__main__":
+def main():
     try:
         if len(sys.argv)>0:
             input_file=sys.argv[1]
@@ -73,3 +73,7 @@ if __name__ == "__main__":
         params["base_path"] = Path.cwd()
         print("Parameters loaded. Starting simulation setup...")
         setup_simulation(**params)
+
+
+if __name__ == "__main__":
+    main()

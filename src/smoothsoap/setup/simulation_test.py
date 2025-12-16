@@ -4,8 +4,8 @@ from pathlib import Path
 import os
 import random 
 
-from src.smoothsoap.plots.timeseries import plot_projection_atoms, plot_projection_atoms_models
-from src.smoothsoap.plots.histograms import plot_2pca
+from smoothsoap.plots.timeseries import plot_projection_atoms, plot_projection_atoms_models
+from smoothsoap.plots.histograms import plot_2pca
 
 random.seed(7)
 def run_simulation_test(trj, used_methods, run_ids, run_dirs, **kwargs):

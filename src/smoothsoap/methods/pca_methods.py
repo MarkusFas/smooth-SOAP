@@ -1,5 +1,6 @@
-import torch 
 import os
+
+import torch
 from abc import ABC, abstractmethod
 import metatensor.torch as mts
 from metatomic.torch import System, ModelEvaluationOptions, ModelOutput, systems_to_torch, load_atomistic_model
@@ -13,9 +14,11 @@ from itertools import chain
 from vesin import NeighborList
 from memory_profiler import profile
 from sklearn.decomposition import PCA as skPCA
-from src.smoothsoap.transformations.PCAtransform import PCA_obj
-from src.smoothsoap.methods.BaseMethod import FullMethodBase
 from sklearn.linear_model import Ridge 
+
+from smoothsoap.transformations.PCAtransform import PCA_obj
+from smoothsoap.methods.BaseMethod import FullMethodBase
+
 
 
 class ScikitPCA(FullMethodBase):
