@@ -1,13 +1,13 @@
 # src/launcher/run_system.py
 from importlib.resources import files
 from pathlib import Path
+import argparse
 from smoothsoap.setup.defaults import DEFAULT_PARAMS
 from smoothsoap.setup.input_check import setup_simulation
 import yaml
 import sys
 
-def load_config(system, runfile):
-    yaml_path = files(f"smoothsoap.systems.{system}").joinpath(f"{runfile}.yaml")
+def load_config(yaml_path):
     with yaml_path.open("r") as f:
         return yaml.safe_load(f)
 
@@ -27,11 +27,21 @@ def merge_params(defaults, updates, path="root"):
 
 
 def main():
-    try:
-        if len(sys.argv)>0:
-            input_file=sys.argv[1]
-    except IndexError:
-        pass
+    parser = argparse.ArgumentParser(
+    description="Run SmoothSOAP simulation with a YAML config."
+    )
+    parser.add_argument(
+        "config",
+        nargs="?",
+        default=None,
+        help="Path to YAML config file, if not given, user can specify default system and runfiles in launcher",
+    )
+    args = parser.parse_args()
+
+    input_file = Path(args.config).resolve()
+    if not input_file.exists():
+        raise FileNotFoundError(f"Config file does not exist: {input_file}")
+    
     #input_file = 'systems/icewater/test.yaml'
     #input_file = 'systems/icewater/test_interval1.yaml'
     #input_file = 'systems/cycloAE/test_sep_tests.yaml'
@@ -39,36 +49,35 @@ def main():
     #input_file = 'systems/ice_water_sep/test_interval1.yaml'
     #input_file = 'systems/smallcell_interface_350/test_interval_lf.yaml'
     #input_file = 'systems/icewater/test_interval1.yaml'
-
     #input_file = 'systems/smallcell_interface_350/test_intervaltemp.yaml'
     #input_file = 'systems/cycloAE/test_interval_hf0.yaml'
-    input_file = 'systems/smallcell_interface_350/test_interval_lf0.yaml'
+    #input_file = 'systems/smallcell_interface_350/test_interval_lf0.yaml'
     #input_file = 'systems/iron/run.yaml'
     #input_file = 'systems/smallcell_interface_350/test_metad_trj.yaml'
     #input_file = 'systems/ice_water_sep/test_interval1.yaml'
     #input_file = 'systems/GeTe/test_interval1.yaml' 
-
-
     #input_file = 'systems/cycloAE/test_interval_hf0.yaml'
     #input_file = 'systems/test_hannah/test_interval1.yaml'
     #input_file = 'systems/smallcell_interface_350/test_intervaltica.yaml'
-
     #input_file= 'systems/BaTiO3/test.yaml'
-
-    #if len(sys.argv)>0:
-    #    input_file=sys.argv[1]
-    #else:
-    #   print('Please provide default file')
-
     #input_file = 'systems/ice_water_sep/test_intervaltemp.yaml'
     #input_file = 'systems/chignolin/run0.yaml'
     #input_file = 'systems/GeTe/run0.yaml'
     #input_file = 'systems/ala/run0.yaml'
-    systems = ['smallcell_interface_350']
-    runfiles = ['test_interval_lf0']
-    for system, runfile in zip(systems, runfiles):
-        print("Starting setup for {system} {runfile}...")
-        user_cfg = load_config(system, runfile)
+
+    if input_file is None:
+        systems = ['smallcell_interface_350']
+        runfiles = ['test_interval_lf0']
+
+        yaml_paths = []
+        for system, runfile in zip(systems, runfiles):
+            print("Starting setup for {system} {runfile}...")
+            yaml_paths.append(files(f"smoothsoap.systems.{system}").joinpath(f"{runfile}.yaml"))
+    else:
+        yaml_paths = [input_file]
+
+    for yaml_path in yaml_paths:
+        user_cfg = load_config(yaml_path)
         params = merge_params(DEFAULT_PARAMS, user_cfg, input_file)
         params["base_path"] = Path.cwd()
         print("Parameters loaded. Starting simulation setup...")

@@ -24,7 +24,7 @@ methods:
 
 input_params:
   fname: 
-     - ../../../../data/iron/pos000.xyz
+     - data/iron/pos000.xyz
    
   indices: 
     - ':1'
