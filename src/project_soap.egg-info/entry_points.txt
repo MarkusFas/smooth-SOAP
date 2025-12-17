@@ -1,0 +1,2 @@
+[console_scripts]
+smoothsoap = smoothsoap.setup.launcher:main

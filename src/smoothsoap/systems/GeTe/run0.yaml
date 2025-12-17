@@ -1,0 +1,49 @@
+
+# systems/icewater/test.yaml
+
+system: gete
+specifier: ncum4_max600
+interval: 
+  - 1
+
+
+n_cumulants: 4
+sigma: 
+  - 5
+spatial_cutoff: 
+  - 5
+  #- 6
+  #- 7
+#lag: 0
+max_lag: 600
+min_lag: 10
+lag_step: 50
+train_selected_atoms: 30 #[4,7,11,13] #[4] # first Ca #48
+test_selected_atoms: 30 #[4][4,7,11,13]  #[4] #48 #[705, 702, 699, 696, 693, 690, 687, 684, 681, 678, 675, 672, 669, 666, 663, 660] #only ice
+#test_selected_atoms: 50
+methods: 
+  #- CumulantPCA
+  - CumulantIVAC
+  #- TempPCA
+  #- TILDA
+  #- IVAC
+  #- TICA
+
+input_params:
+  fname: 
+    - /Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/gete/ramp_up.pos_0.extxyz
+    - /Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/gete/ramp_down.pos_0.extxyz
+  indices: '::4'
+  concatenate: True
+
+
+descriptor: SOAP
+ridge: true
+SOAP_params:
+  centers: [52]
+  neighbors: [32,52]
+  cutoff: 5
+  max_angular: 3
+  max_radial: 3
+output_per_structure: false
+plots: ["projection", "pca"]
