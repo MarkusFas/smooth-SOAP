@@ -37,10 +37,8 @@ def main():
         help="Path to YAML config file, if not given, user can specify default system and runfiles in launcher",
     )
     args = parser.parse_args()
-
-    input_file = Path(args.config).resolve()
-    if not input_file.exists():
-        raise FileNotFoundError(f"Config file does not exist: {input_file}")
+    input_file = args.config
+ 
     
     #input_file = 'systems/icewater/test.yaml'
     #input_file = 'systems/icewater/test_interval1.yaml'
@@ -66,14 +64,17 @@ def main():
     #input_file = 'systems/ala/run0.yaml'
 
     if input_file is None:
-        systems = ['smallcell_interface_350']
-        runfiles = ['test_interval_lf0']
+        systems = ['iron'] #['smallcell_interface_350'] 
+        runfiles = ['run'] # ['test_interval_lf0']
 
         yaml_paths = []
         for system, runfile in zip(systems, runfiles):
-            print("Starting setup for {system} {runfile}...")
+            print(f"Starting setup for {system} {runfile}...")
             yaml_paths.append(files(f"smoothsoap.systems.{system}").joinpath(f"{runfile}.yaml"))
     else:
+        input_file = Path(input_file).resolve()
+        if not input_file.exists():
+            raise FileNotFoundError(f"Config file does not exist: {input_file}")
         yaml_paths = [input_file]
 
     for yaml_path in yaml_paths:

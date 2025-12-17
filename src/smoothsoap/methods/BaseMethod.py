@@ -38,6 +38,7 @@ class FullMethodBase(ABC):
         self.ridge_alpha = ridge_alpha
         dir = (
             root
+            / method
             / f'interval_{self.interval}'
             / f'lag_{self.lag}'
             / f'sigma_{self.sigma}'
@@ -149,7 +150,6 @@ class FullMethodBase(ABC):
         print(soap_block.shape)
         first_soap = soap_block  
         buffer = np.zeros((first_soap.shape[0], self.interval, first_soap.shape[1]))
-        
         delta=np.zeros(self.interval)
         delta[self.interval//2]=1
         kernel=gaussian_filter(delta,sigma=(self.interval-1)//(2)) # cutoff at 3 sigma, leaves 0.1%
@@ -174,13 +174,14 @@ class FullMethodBase(ABC):
                     #print('projshape', avg_soap_proj.shape)
                     #print('nonprog.shape',new_soap_values.shape)
                     soap_values[:,fidx-self.interval,:] = new_soap_values
-                    avg_soaps_projs[:,fidx-self.interval,:]=  avg_soap_proj
+                    avg_soaps_projs[:,fidx-self.interval,:] = avg_soap_proj
                 buffer[:,fidx%self.interval,:] = new_soap_values
-            print('soapvals',soap_values.dtype)
-            print('soapvals',soap_values.shape)
-            print('avg_soaps_proj',avg_soaps_projs.shape)
             #soap_values=soap_values.reshape((soap_values.shape[0]*soap_values.shape[1],soap_values.shape[2]))
             #avg_soaps_projs=avg_soaps_projs.reshape((avg_soaps_projs[0]*avg_soaps_projs[1],avg_soaps_projs.shape[2]))
+            if len(systems) == 1:
+                soap_values = first_soap[:,None,:]
+                avg_soaps_projs = trafo.project(first_soap)[:,None,:]
+
             soap_values=soap_values.reshape(soap_values.shape[0]*soap_values.shape[1],soap_values.shape[2])
             avg_soaps_projs=avg_soaps_projs.reshape(avg_soaps_projs.shape[0]*avg_soaps_projs.shape[1],avg_soaps_projs.shape[2])
             #np.reshape(avg_soaps_projs.soap_values,(avg_soaps_projs.shape[0]*avg_soaps_projs.shape[1],avg_soaps_projs.shape[2]))

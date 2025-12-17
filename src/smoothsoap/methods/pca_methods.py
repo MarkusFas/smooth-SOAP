@@ -495,7 +495,23 @@ class PCAfull(FullMethodBase):
     def __init__(self, descriptor, interval, ridge_alpha, root):
         self.name = 'PCAfull'
         super().__init__(descriptor, interval, lag=0, root=root, sigma=0, ridge_alpha=ridge_alpha, method=self.name)
-        
+
+
+    def compute_(self, soap, scatter_mut, sum_mu_t, cov_t, nsmp, ntimesteps):   
+        for atom_type_idx, atom_type in enumerate(self.atomsel_element):
+            mu_t = soap[atom_type].mean(axis=0)
+            scatter_mut[atom_type_idx] += np.einsum(
+                "a,b->ab",
+                mu_t,
+                mu_t,
+            )
+
+            sum_mu_t[atom_type_idx] += mu_t #sum over all same atoms
+
+            cov_t[atom_type_idx] += np.einsum("ia,ib->ab", soap[atom_type] - mu_t, soap[atom_type] - mu_t)/len(atom_type) #sum over all same atoms (have already summed over all times before) 
+            nsmp[atom_type_idx] += len(atom_type)
+            ntimesteps[atom_type_idx] += 1
+
 
     def compute_COV(self, traj):
         """
@@ -525,7 +541,7 @@ class PCAfull(FullMethodBase):
         """
         systems = systems_to_torch(traj, dtype=torch.float64)
         soap_block = self.descriptor.calculate(systems[:1])
-        first_soap =  soap_block  
+        first_soap = soap_block  
         self.atomsel_element = [[idx for idx, label in enumerate(self.descriptor.soap_block.samples.values.numpy()) if label[2] == atom_type] for atom_type in self.descriptor.centers]
         if soap_block.shape[0] == 1:
             self.atomsel_element = [[0] for atom_type in self.descriptor.centers]
@@ -539,7 +555,7 @@ class PCAfull(FullMethodBase):
         kernel=gaussian_filter(delta,sigma=(self.interval-1))#gaussian_filter(delta,sigma=(self.interval-1)//(2*3)) # cutoff at 3 sigma, leaves 0.1%
         kernel /= np.sum(kernel)
         ntimesteps = np.zeros(len(self.atomsel_element), dtype=int)
-        import matplotlib.pyplot as plt
+
         #plt.plot(kernel)
         #plt.savefig(self.label + '_kernel.png')
         #plt.close()
@@ -557,30 +573,19 @@ class PCAfull(FullMethodBase):
                 #ax.scatter([fidx%self.interval + self.interval//2],[avg_soap[0,0]], color='red', s=50)
                 #plt.savefig(self.label + f'_buffer_{fidx}.png')
                 #plt.close()
-               
-                for atom_type_idx, atom_type in enumerate(self.atomsel_element):
-                    mu_t = avg_soap[atom_type].mean(axis=0)
-                    scatter_mut[atom_type_idx] += np.einsum(
-                        "a,b->ab",
-                        mu_t,
-                        mu_t,
-                    )
-
-                    sum_mu_t[atom_type_idx] += mu_t #sum over all same atoms
-
-                    cov_t[atom_type_idx] += np.einsum("ia,ib->ab", avg_soap[atom_type] - mu_t, avg_soap[atom_type] - mu_t)/len(atom_type) #sum over all same atoms (have already summed over all times before) 
-                    nsmp[atom_type_idx] += len(atom_type)
-                    ntimesteps[atom_type_idx] += 1
-
+                self.compute_(avg_soap, scatter_mut, sum_mu_t, cov_t, nsmp, ntimesteps)
+                
             buffer[:,fidx%self.interval,:] = new_soap_values
         #exit()
+        if len(systems) == 1:
+            self.compute_(first_soap, scatter_mut, sum_mu_t, cov_t, nsmp, ntimesteps)
+
         mean_cov_t = np.zeros((len(self.atomsel_element), new_soap_values.shape[1], new_soap_values.shape[1]))
         cov_mu_t = np.zeros((len(self.atomsel_element), new_soap_values.shape[1], new_soap_values.shape[1]))
         mean_mu_t = np.zeros((len(self.atomsel_element), first_soap.shape[1],))
 
         # autocorrelation matrix - remove mean
         for atom_type_idx, atom_type in enumerate(self.atomsel_element):
-            
             mean_cov_t[atom_type_idx] = cov_t[atom_type_idx]/ntimesteps[atom_type_idx]
             # COV = 1/N ExxT - mumuT
             mean_mu_t[atom_type_idx] = sum_mu_t[atom_type_idx]/ntimesteps[atom_type_idx]
@@ -1369,6 +1374,13 @@ class CumulantPCA(FullMethodBase):
         return projected_per_type
         
 
+    def compute_(self, avg_soap, sum_soaps, cov_t, nsmp, ntimesteps):   
+        for atom_type_idx, atom_type in enumerate(self.atomsel_element):
+            sum_soaps[atom_type_idx] += avg_soap[atom_type].sum(axis=0)
+            cov_t[atom_type_idx] += np.einsum("ia,ib->ab", avg_soap[atom_type], avg_soap[atom_type]) #sum over all same atoms (have already summed over all times before) 
+            nsmp[atom_type_idx] += len(atom_type)
+            ntimesteps[atom_type_idx] += 1
+
 
     def compute_COV(self, traj):
         """
@@ -1423,12 +1435,13 @@ class CumulantPCA(FullMethodBase):
                 # the buffer contains data from fidx-maxlag to fidx. add a forward ACF
                 avg_soap = np.einsum("j,ija->ia", roll_kernel, buffer) #smoothen
                 for atom_type_idx, atom_type in enumerate(self.atomsel_element):
-                    sum_soaps[atom_type_idx] += avg_soap[atom_type].sum(axis=0)
-                    cov_t[atom_type_idx] += np.einsum("ia,ib->ab", avg_soap[atom_type], avg_soap[atom_type]) #sum over all same atoms (have already summed over all times before) 
-                    nsmp[atom_type_idx] += len(atom_type)
-                    ntimesteps[atom_type_idx] += 1
+                    self.compute_(avg_soap, sum_soaps, cov_t, nsmp, ntimesteps)
+
 
             buffer[:,fidx%self.interval,:] = cum_soap_values
+
+        if len(systems) == 1:
+            self.compute_(first_soap, sum_soaps, cov_t, nsmp, ntimesteps)
 
         mu = np.zeros((len(self.atomsel_element), cum_soap_values.shape[1]))
         cov = np.zeros((len(self.atomsel_element), cum_soap_values.shape[1], cum_soap_values.shape[1]))
@@ -1477,9 +1490,12 @@ class CumulantPCA(FullMethodBase):
                     soap_values[:,fidx-self.interval,:] = cum_soap_values
                     avg_soaps_projs[:,fidx-self.interval,:] = avg_soap_proj
                 buffer[:,fidx%self.interval,:] = cum_soap_values
-            print('soapvals',soap_values.dtype)
-            print('soapvals',soap_values.shape)
-            print('avg_soaps_proj',avg_soaps_projs.shape)
+
+
+            if len(systems) == 1:
+                soap_values = first_soap[:,None,:]
+                avg_soaps_projs = trafo.project(first_soap)[:,None,:]
+
             #soap_values=soap_values.reshape((soap_values.shape[0]*soap_values.shape[1],soap_values.shape[2]))
             #avg_soaps_projs=avg_soaps_projs.reshape((avg_soaps_projs[0]*avg_soaps_projs[1],avg_soaps_projs.shape[2]))
             soap_values=soap_values.reshape(soap_values.shape[0]*soap_values.shape[1],soap_values.shape[2])

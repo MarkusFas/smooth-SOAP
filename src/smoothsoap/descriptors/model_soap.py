@@ -234,7 +234,7 @@ class CumulantSOAP_CV(torch.nn.Module):
             selected_samples=selected_samples,
             selected_keys=self.selected_keys,
         )
-        
+
         soap = soap.keys_to_samples("center_type")
         soap = soap.keys_to_properties(["neighbor_1_type", "neighbor_2_type"])
         self.soap_block = soap.block()

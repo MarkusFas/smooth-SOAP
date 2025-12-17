@@ -64,7 +64,7 @@ class PCA_obj:
                 break
             except np.linalg.LinAlgError:
                 factor *= 10
-            
+
         print(f'used a factor of {factor} for regularization')
         # reorder so that largest EV is first
         self.mu = mu

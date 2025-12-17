@@ -21,7 +21,16 @@ class SpatialIVAC(FullMethodBase):
         self.name = 'SpatialIVAC'
         self.n_cumulants = n_cumulants
         super().__init__(descriptor, interval, lag=0, root=root, sigma=0, ridge_alpha=ridge_alpha, method=self.name)
-        
+
+
+    def compute_(self, soap, sum_soaps, cov_t, cov_t_cum, nsmp, ntimesteps):   
+        for atom_type_idx, atom_type in enumerate(self.atomsel_element):
+            sum_soaps[atom_type_idx] += soap[atom_type].mean(axis=0)
+            cov_t[atom_type_idx] += np.einsum("ia,ib->ab", soap[atom_type], soap[atom_type]) #sum over all same atoms (have already summed over all times before) 
+            cov_t_cum[atom_type_idx] += np.einsum("a,b->ab", sum_soaps[atom_type_idx], sum_soaps[atom_type_idx]) #sum over all same atoms (have already summed over all times before) 
+            nsmp[atom_type_idx] += len(atom_type)
+            ntimesteps[atom_type_idx] += 1
+
 
     def compute_COV(self, traj):
         """
@@ -51,10 +60,12 @@ class SpatialIVAC(FullMethodBase):
         """
         systems = systems_to_torch(traj, dtype=torch.float64)
         soap_block = self.descriptor.calculate(systems[:1])
-        first_soap = self.descriptor.compute_cumulants(soap_block, self.n_cumulants)
+        first_soap = soap_block
         first_soap_cum = self.descriptor.compute_cumulants(soap_block, self.n_cumulants)
-        
-        self.atomsel_element = [[0] for atom_type in self.descriptor.centers]
+
+        self.atomsel_element = [[idx for idx, label in enumerate(self.descriptor.soap_block.samples.values.numpy()) if label[2] == atom_type] for atom_type in self.descriptor.centers]
+        if soap_block.shape[0] == 1:
+            self.atomsel_element = [[0] for _ in self.descriptor.centers]
         
         buffer = np.zeros((first_soap.shape[0], self.interval, first_soap.shape[1]))
         buffer_cum = np.zeros((first_soap.shape[0], self.interval, first_soap_cum.shape[1]))
@@ -71,38 +82,34 @@ class SpatialIVAC(FullMethodBase):
 
         for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Computing SOAPs"):
             new_soap_values = self.descriptor.calculate([system])
-            cum_soap_values = self.descriptor.compute_cumulants(new_soap_values, self.n_cumulants)
+            #cum_soap_values = self.descriptor.compute_cumulants(new_soap_values, self.n_cumulants)
             if fidx >= self.interval:
                 roll_kernel = np.roll(kernel, fidx%self.interval)
                 # computes a contribution to the correlation function
                 # the buffer contains data from fidx-maxlag to fidx. add a forward ACF
                 avg_soap = np.einsum("j,ija->ia", roll_kernel, buffer) #smoothen
-                avg_soap_cum = np.einsum("j,ija->ia", roll_kernel, buffer_cum) #smoothen
+                #avg_soap_cum = np.einsum("j,ija->ia", roll_kernel, buffer_cum) #smoothen
                 for atom_type_idx, atom_type in enumerate(self.atomsel_element):
-                    sum_soaps[atom_type_idx] += avg_soap[atom_type].sum(axis=0)
-                    cov_t[atom_type_idx] += np.einsum("ia,ib->ab", avg_soap[atom_type], avg_soap[atom_type]) #sum over all same atoms (have already summed over all times before) 
-                    
-                    sum_soaps_cum[atom_type_idx] += avg_soap_cum[atom_type].sum(axis=0)
-                    cov_t_cum[atom_type_idx] += np.einsum("ia,ib->ab", avg_soap_cum[atom_type], avg_soap_cum[atom_type]) #sum over all same atoms (have already summed over all times before) 
-                    nsmp[atom_type_idx] += len(atom_type)
-                    ntimesteps[atom_type_idx] += 1
+                    self.compute_(avg_soap, sum_soaps, cov_t, cov_t_cum, nsmp, ntimesteps)
 
             buffer[:,fidx%self.interval,:] = new_soap_values
-            buffer_cum[:,fidx%self.interval,:] = cum_soap_values
+            #buffer_cum[:,fidx%self.interval,:] = cum_soap_values
+
+        if len(systems) == 1:
+            self.compute_(first_soap, sum_soaps, cov_t, cov_t_cum, nsmp, ntimesteps)
 
         mu = np.zeros((len(self.atomsel_element), new_soap_values.shape[1]))
         cov = np.zeros((len(self.atomsel_element), new_soap_values.shape[1], new_soap_values.shape[1]))
-        mu_cum = np.zeros((len(self.atomsel_element), cum_soap_values.shape[1]))
-        cov_cum = np.zeros((len(self.atomsel_element), cum_soap_values.shape[1], cum_soap_values.shape[1]))
+        mu_cum = np.zeros((len(self.atomsel_element), new_soap_values.shape[1]))
+        cov_cum = np.zeros((len(self.atomsel_element), new_soap_values.shape[1], new_soap_values.shape[1]))
 
         # autocorrelation matrix - remove mean
         for atom_type_idx, atom_type in enumerate(self.atomsel_element):
-            mu[atom_type_idx] = sum_soaps[atom_type_idx]/nsmp[atom_type_idx]
+            mu[atom_type_idx] = sum_soaps[atom_type_idx]/ntimesteps[atom_type_idx]
             # COV = 1/N ExxT - mumuT
             cov[atom_type_idx] = cov_t[atom_type_idx]/nsmp[atom_type_idx] - np.einsum('i,j->ij', mu[atom_type_idx], mu[atom_type_idx])
-            mu_cum[atom_type_idx] = sum_soaps_cum[atom_type_idx]/nsmp[atom_type_idx]
             # COV = 1/N ExxT - mumuT
-            cov_cum[atom_type_idx] = cov_t_cum[atom_type_idx]/nsmp[atom_type_idx] - np.einsum('i,j->ij', mu[atom_type_idx], mu[atom_type_idx])
+            cov_cum[atom_type_idx] = cov_t_cum[atom_type_idx]/(ntimesteps[atom_type_idx]) - np.einsum('i,j->ij', mu[atom_type_idx], mu[atom_type_idx])
         
         self.cov_tot = cov
         return mu, cov_cum, cov
@@ -167,7 +174,7 @@ class SpatialIVACnorm(FullMethodBase):
     def spatial_correlate(self, system, sel_atoms):
         pos = system.positions[sel_atoms]
         cell = system.cell
-        self.make_neighborlist(cutoff=20) # example cutoff
+        self.make_neighborlist(cutoff=10) # example cutoff
         i, j, S, d = self.nlist.compute(
             points=pos,
             box=cell, 
@@ -190,6 +197,19 @@ class SpatialIVACnorm(FullMethodBase):
         S_final = S_sorted[mask]
 
         return i_final, j_final, S_final, d_final
+
+
+    def compute_(self, soap, system, sum_soaps, sum_soaps_dist, sum_soaps_spat, cov_t, cov_t_cum, nsmp, ntimesteps):   
+        for atom_type_idx, atom_type in enumerate(self.atomsel_element):
+            sum_soaps[atom_type_idx] += soap[atom_type].sum(axis=0)
+            cov_t[atom_type_idx] += np.einsum("ia,ib->ab", soap[atom_type], soap[atom_type]) #sum over all same atoms (have already summed over all times before) 
+            a,b,S,d = self.spatial_correlate(system, atom_type) # return nl indexes of center, neighbor and dist
+            dist = 1/(4.0*np.pi*d**2)
+            sum_soaps_dist[atom_type_idx] += np.sum(dist)
+            sum_soaps_spat[atom_type_idx] += np.einsum('m,mk->k', dist, soap[a,:] + soap[b,:]) / 2  # weighted mean over all pairs
+            cov_t_cum[atom_type_idx] += np.einsum("n, ni,nj->ij", dist, soap[a,:], soap[b,:]) #sum over all same atoms (have already summed over all times before) 
+            nsmp[atom_type_idx] += len(atom_type)
+            ntimesteps[atom_type_idx] += 1
 
 
     def compute_COV(self, traj):
@@ -220,13 +240,13 @@ class SpatialIVACnorm(FullMethodBase):
         """
         systems = systems_to_torch(traj, dtype=torch.float64)
         soap_block = self.descriptor.calculate(systems[:1])
-        first_soap = self.descriptor.compute_cumulants(soap_block, self.n_cumulants)
+        first_soap = soap_block
         first_soap_cum = self.descriptor.compute_cumulants(soap_block, self.n_cumulants)
-        
+
         self.atomsel_element = [[idx for idx, label in enumerate(self.descriptor.soap_block.samples.values.numpy()) if label[2] == atom_type] for atom_type in self.descriptor.centers]
         if soap_block.shape[0] == 1:
             self.atomsel_element = [[0] for atom_type in self.descriptor.centers]
-        
+
         buffer = np.zeros((first_soap.shape[0], self.interval, first_soap.shape[1]))
         buffer_cum = np.zeros((first_soap.shape[0], self.interval, first_soap_cum.shape[1]))
         cov_t = np.zeros((len(self.atomsel_element), first_soap.shape[1], first_soap.shape[1],))
@@ -248,19 +268,12 @@ class SpatialIVACnorm(FullMethodBase):
                 # computes a contribution to the correlation function
                 # the buffer contains data from fidx-maxlag to fidx. add a forward ACF
                 avg_soap = np.einsum("j,ija->ia", roll_kernel, buffer) #smoothen
-                for atom_type_idx, atom_type in enumerate(self.atomsel_element):
-                    sum_soaps[atom_type_idx] += avg_soap[atom_type].sum(axis=0)
-                    cov_t[atom_type_idx] += np.einsum("ia,ib->ab", avg_soap[atom_type], avg_soap[atom_type]) #sum over all same atoms (have already summed over all times before) 
-                    a,b,S,d = self.spatial_correlate(system, atom_type) # return nl indexes of center, neighbor and dist
-                    dist = 1/(4.0*np.pi*d**2)
-                    sum_soaps_dist[atom_type_idx] += np.sum(dist)
-                    sum_soaps_spat[atom_type_idx] += np.einsum('m,mk->k', dist, avg_soap[a,:] + avg_soap[b,:]) / 2  # weighted mean over all pairs
-                    cov_t_cum[atom_type_idx] += np.einsum("n, ni,nj->ij", dist , avg_soap[a,:], avg_soap[b,:]) #sum over all same atoms (have already summed over all times before) 
-                    nsmp[atom_type_idx] += len(atom_type)
-                    ntimesteps[atom_type_idx] += 1
+                self.compute_(avg_soap, system, sum_soaps, sum_soaps_dist, sum_soaps_spat, cov_t, cov_t_cum, nsmp, ntimesteps)
 
             buffer[:,fidx%self.interval,:] = new_soap_values
 
+        if len(systems) == 1:
+            self.compute_(first_soap, systems[0], sum_soaps, sum_soaps_dist, sum_soaps_spat, cov_t, cov_t_cum, nsmp, ntimesteps)
 
         mu = np.zeros((len(self.atomsel_element), new_soap_values.shape[1]))
         cov = np.zeros((len(self.atomsel_element), new_soap_values.shape[1], new_soap_values.shape[1]))

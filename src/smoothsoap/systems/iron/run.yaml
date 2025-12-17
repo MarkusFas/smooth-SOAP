@@ -10,24 +10,20 @@ train_selected_atoms: 1000
 #test_selected_atoms: [705, 522, 699, 696, 693, 690, 513, 684, 540, 678, 570, 672, 669, 666, 591, 600] #only ice
 test_selected_atoms: 1000
 methods: 
-  - SpatialIVAC
-  - PCAFull
-  - IVAC
-  - TempPCA
   #- PCAFull
   #- CumulantPCA
-  #- CumulantIVAC
-  - CumulantPCA
-  - CumulantIVAC
+  - SpatialIVAC
   - SpatialIVACnorm
-  #- TICA
+
 
 input_params:
   fname: 
-     - data/iron/pos000.xyz
+     - data/iron/iron-snapshot.xyz
+     #- data/iron/selected.xyz
    
   indices: 
     - ':1'
+    #- ':1'
   concatenate: False
 
 ridge: true
