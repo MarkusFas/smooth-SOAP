@@ -902,7 +902,7 @@ class SpatialPCA(FullMethodBase):
             mu[atom_type_idx] = sum_soaps[atom_type_idx]/nsmp[atom_type_idx]
             # COV = 1/N ExxT - mumuT
             cov[atom_type_idx] = cov_t[atom_type_idx]/nsmp[atom_type_idx] - np.einsum('i,j->ij', mu[atom_type_idx], mu[atom_type_idx])
-        self.cov_tot = cov
+        self.cov = cov
         return mu, cov, [np.eye(c.shape[0]) for c in cov]
 
     """            buffer[:,fidx%self.interval,:] = avg_soap_values
