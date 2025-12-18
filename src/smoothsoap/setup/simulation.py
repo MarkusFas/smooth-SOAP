@@ -11,7 +11,7 @@ import chemiscope
 from smoothsoap.plots.onion import plot_onion
 from smoothsoap.plots.cov_heatmap import plot_heatmap
 from smoothsoap.plots.timeseries import plot_projection_atoms, plot_projection_atoms_models
-from smoothsoap.plots.histograms import plot_2pca, plot_2pca_atoms, plot_2pca_height, plot_histogram
+from smoothsoap.plots.histograms import plot_2pca, plot_2pca_atoms, plot_2pca_height, plot_histogram, plot_2pca_spatial, plot_2pca_spatial_movie
 from smoothsoap.classifier.Logreg import run_logistic_regression
 
 def run_simulation(trj, trj_test, methods_intervals, **kwargs):
@@ -56,9 +56,9 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
                 test_atoms = N_test
             if test_atoms is None:
                 test_atoms = train_atoms
-            print('Ntrain, Ntest: ', N_train, N_test)
-            print('Train atoms: {}'.format(train_atoms))        
-            print('Test atoms: {}'.format(test_atoms))        
+            #print('Ntrain, Ntest: ', N_train, N_test)
+            #print('Train atoms: {}'.format(train_atoms))        
+            #print('Test atoms: {}'.format(test_atoms))        
             #train_atoms = selected_atoms
             train_atoms = sorted(train_atoms)
             test_atoms = sorted(test_atoms)
@@ -75,21 +75,23 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
 
 
             trj_predict = list(chain(*trj_test))
+            print('Starting to fit the Ridge ...')
             X = method.predict(trj_predict, test_atoms) ##centers N,T,P
+            print('Finished the Ridge fit')
             X = [proj.transpose(1,0,2) for proj in X]#centers T,N,P
 
             if kwargs["ridge"]:
                 #method.fit_ridge(trj_predict)
-                print('fit ridge 1')
-  
+                print('Starting to fit the Ridge ...')
+
                 #print('fit ridge 2')
                 trj_ridge = list(chain(*trj))
                 method.fit_ridge_nonincremental(trj_ridge)
-
+                print('Finished the Ridge fit')
                 #X_ridge = method.predict_ridge(trj[0], train_atoms)
                 X_ridge = method.predict_ridge(trj_predict, test_atoms)
                 X_ridge = [proj.transpose(1,0,2) for proj in X_ridge]
-            
+
             # label the trajectories:
             if kwargs['classify']['request']:
                 if kwargs['classify']['switch_index'] is not None:
@@ -119,14 +121,14 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
                 if kwargs["ridge"]:
                     for i, proj in enumerate(X_ridge):
                         plot_onion(proj, method.label + f'_ridge_{i}', test_atoms, trj_predict)
-                print('Plotted histogram of PCA first component')
+                print(f'Plotted ONION histogram of {method.name} first component')
 
             if "projection" in plots:
                 plot_projection_atoms(X, [0,1,2,3], method.label, [method.interval]) # need to transpose to T,N,P
                 if kwargs["ridge"]:
                     plot_projection_atoms(X_ridge, [0,1,2,3], method.label + '_ridge', [method.interval]) # need to transpose to T,N,P
                 #plot_projection_atoms_models(X, [0,1,2,3], label, [method.interval])
-                print('Plotted projected timeseries for test atoms')
+                print(f'Plotted projected timeseries for {method.name}')
 
             if "pca" in plots:
                 for i, proj in enumerate(X):
@@ -134,7 +136,15 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
                 if kwargs["ridge"]:
                     for i, proj in enumerate(X_ridge):
                         plot_2pca(proj, method.label + f'_ridge_{i}')
-                print('Plotted scatterplot of PCA')
+                print(f'Plotted scatterplot of {method.name}')
+            
+            if "pca_spatial" in plots:
+                for i, proj in enumerate(X):
+                    plot_2pca_spatial_movie(proj, method.label + f'_{i}', test_atoms, trj_predict)
+                if kwargs["ridge"]:
+                    for i, proj in enumerate(X_ridge):
+                        plot_2pca_spatial_movie(proj, method.label + f'_ridge_{i}', test_atoms, trj_predict)
+                print(f'Plotted spatial of {method.name}')
 
             if "pca_atoms" in plots:
                 for i, proj in enumerate(X):
@@ -142,7 +152,7 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
                 if kwargs["ridge"]:
                     for i, proj in enumerate(X_ridge):
                         plot_2pca_atoms(proj, method.label + f'_ridge_{i}', test_atoms)
-                print('Plotted scatterplot of PCA atoms labels')
+                print(f'Plotted scatterplot of {method.name} atoms labels')
             
             if "pca_height" in plots:
                 for i, proj in enumerate(X):
@@ -150,7 +160,7 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
                 if kwargs["ridge"]:
                     for i, proj in enumerate(X_ridge):
                         plot_2pca_height(proj, method.label + f'_ridge_{i}', test_atoms, trj_predict)
-                print('Plotted scatterplot of PCA height labels')
+                print(f'Plotted scatterplot of {method.name} height labels')
 
             print('Plots saved at ' + method.label)
 
@@ -160,7 +170,7 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
                 if kwargs["ridge"]:
                     for i, proj in enumerate(X_ridge):
                         plot_histogram(proj, method.label + f'_ridge_{i}', test_atoms, trj_predict)
-                print('Plotted histogram of PCA first component')
+                print(f'Plotted histogram of {method.name} first component')
 
             if "cs" in plots:
                 cs = chemiscope.show(trj[0],

@@ -134,7 +134,7 @@ class FullMethodBase(ABC):
 
         for trafo in self.transformations:
             projected = []
-            for system in systems:
+            for system in tqdm(systems, total=len(systems), desc="Predict"):
                 descriptor = self.descriptor.calculate([system])
                 descriptor_proj = trafo.project(descriptor)
                 projected.append(descriptor_proj)

@@ -17,9 +17,9 @@ from smoothsoap.methods.BaseMethod import FullMethodBase
 
 class SpatialIVAC(FullMethodBase):
 
-    def __init__(self, descriptor, interval, ridge_alpha, n_cumulants, root):
+    def __init__(self, descriptor, interval, ridge_alpha, spatial_cutoff, root):
         self.name = 'SpatialIVAC'
-        self.n_cumulants = n_cumulants
+        self.spatial_cutoff = spatial_cutoff
         super().__init__(descriptor, interval, lag=0, root=root, sigma=0, ridge_alpha=ridge_alpha, method=self.name)
 
 
@@ -61,7 +61,7 @@ class SpatialIVAC(FullMethodBase):
         systems = systems_to_torch(traj, dtype=torch.float64)
         soap_block = self.descriptor.calculate(systems[:1])
         first_soap = soap_block
-        first_soap_cum = self.descriptor.compute_cumulants(soap_block, self.n_cumulants)
+        first_soap_cum = self.descriptor.compute_cumulants(soap_block, 1)
 
         self.atomsel_element = [[idx for idx, label in enumerate(self.descriptor.soap_block.samples.values.numpy()) if label[2] == atom_type] for atom_type in self.descriptor.centers]
         if soap_block.shape[0] == 1:
@@ -82,7 +82,7 @@ class SpatialIVAC(FullMethodBase):
 
         for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Computing SOAPs"):
             new_soap_values = self.descriptor.calculate([system])
-            #cum_soap_values = self.descriptor.compute_cumulants(new_soap_values, self.n_cumulants)
+
             if fidx >= self.interval:
                 roll_kernel = np.roll(kernel, fidx%self.interval)
                 # computes a contribution to the correlation function
@@ -161,9 +161,9 @@ class SpatialIVAC(FullMethodBase):
 
 class SpatialIVACnorm(FullMethodBase):
 
-    def __init__(self, descriptor, interval, ridge_alpha, n_cumulants, root):
+    def __init__(self, descriptor, interval, ridge_alpha, spatial_cutoff, root):
         self.name = 'SpatialIVACnorm'
-        self.n_cumulants = n_cumulants
+        self.spatial_cutoff = spatial_cutoff
         super().__init__(descriptor, interval, lag=0, root=root, sigma=0, ridge_alpha=ridge_alpha, method=self.name)
 
 
@@ -174,7 +174,7 @@ class SpatialIVACnorm(FullMethodBase):
     def spatial_correlate(self, system, sel_atoms):
         pos = system.positions[sel_atoms]
         cell = system.cell
-        self.make_neighborlist(cutoff=10) # example cutoff
+        self.make_neighborlist(cutoff=self.spatial_cutoff) # example cutoff
         i, j, S, d = self.nlist.compute(
             points=pos,
             box=cell, 
@@ -241,7 +241,7 @@ class SpatialIVACnorm(FullMethodBase):
         systems = systems_to_torch(traj, dtype=torch.float64)
         soap_block = self.descriptor.calculate(systems[:1])
         first_soap = soap_block
-        first_soap_cum = self.descriptor.compute_cumulants(soap_block, self.n_cumulants)
+        first_soap_cum = self.descriptor.compute_cumulants(soap_block, 1)
 
         self.atomsel_element = [[idx for idx, label in enumerate(self.descriptor.soap_block.samples.values.numpy()) if label[2] == atom_type] for atom_type in self.descriptor.centers]
         if soap_block.shape[0] == 1:

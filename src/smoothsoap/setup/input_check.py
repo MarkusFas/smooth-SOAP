@@ -81,6 +81,7 @@ def check_analysis_inputs(trajs, test_trajs, **kwargs):
     else:
         raise TypeError("n_cumulants must be an integer or list of integers")
 
+
     spatial_cutoff = kwargs["spatial_cutoff"]
     if isinstance(spatial_cutoff, float) or isinstance(spatial_cutoff, int):
         kwargs['spatial_cutoff'] = [spatial_cutoff]
@@ -318,12 +319,12 @@ def setup_simulation(**kwargs):
                                     method_obj = CumulantIVAC(descriptor, interval, max_lag, min_lag, lag_step, ridge_alpha, n_cumulants, run_dir)
                                 elif method.upper() == 'SPATIALIVAC':
                                     n_cumulants = 1
-                                    descriptor = CumulantSOAP_CV(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors, n_cumulants)
-                                    method_obj = SpatialIVAC(descriptor, interval, ridge_alpha, n_cumulants, run_dir)
+                                    descriptor = CumulantSOAP_CV(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors, spatial_cutoff)
+                                    method_obj = SpatialIVAC(descriptor, interval, ridge_alpha, spatial_cutoff, run_dir)
                                 elif method.upper() == 'SPATIALIVACNORM':
                                     n_cumulants = 1
-                                    descriptor = CumulantSOAP_CV(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors, n_cumulants)
-                                    method_obj = SpatialIVACnorm(descriptor, interval, ridge_alpha, n_cumulants, run_dir)
+                                    descriptor = CumulantSOAP_CV(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors, spatial_cutoff)
+                                    method_obj = SpatialIVACnorm(descriptor, interval, ridge_alpha, spatial_cutoff, run_dir)
                                 else:
                                     raise NotImplementedError(f"Method must be one of {implemented_opt}, got {method}")
 
