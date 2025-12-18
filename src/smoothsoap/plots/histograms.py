@@ -18,7 +18,7 @@ def plot_2pca(X, label): #T,N,P
             alpha=0.2,
             s=2.5,
         ) 
-        
+  
     cbar = plt.colorbar(sc, ax=ax)
     cbar.set_label('z')
     plt.savefig(label + f'_projection.png', dpi=200)

@@ -663,6 +663,24 @@ class SpatialPCA(FullMethodBase):
         super().__init__(descriptor, interval, lag=0, root=root, sigma=sigma, ridge_alpha=ridge_alpha, method=self.name)
 
 
+    def compute_(self, soap, scatter_mut, sum_mu_t, cov_t, nsmp, ntimesteps):
+        for atom_type_idx, atom_type in enumerate(self.atomsel_element):
+            #COV_intra_cluster, COV_inter_cluster = self.full_spatial_averaging(system, avg_soap, self.sigma)
+            mu_t = soap[atom_type].mean(axis=0)
+            scatter_mut[atom_type_idx] += np.einsum(
+                "a,b->ab",
+                mu_t,
+                mu_t,
+            )
+
+            sum_mu_t[atom_type_idx] += mu_t #sum over all same atoms
+
+            #cov_t[atom_type_idx] += np.einsum("ia,ib->ab", avg_soap[atom_type] - mu_t, avg_soap[atom_type] - mu_t)/len(atom_type) #sum over all same atoms (have already summed over all times before) 
+            cov_t[atom_type_idx] += COV_inter_cluster
+            cov_intra_t[atom_type_idx] += COV_intra_cluster
+            nsmp[atom_type_idx] += len(atom_type)
+            ntimesteps[atom_type_idx] += 1
+
     def compute_COV(self, traj):
         """
         Compute time-averaged SOAP covariance matrices for each atomic species.
@@ -714,10 +732,11 @@ class SpatialPCA(FullMethodBase):
                 # computes a contribution to the correlation function
                 # the buffer contains data from fidx-maxlag to fidx. add a forward ACF
                 avg_soap = np.einsum("j,ija->ia", roll_kernel, buffer) #smoothen
+                self.compute_()
                 for atom_type_idx, atom_type in enumerate(self.atomsel_element):
                     
                     #COV_intra_cluster, COV_inter_cluster = self.full_spatial_averaging(system, avg_soap, self.sigma)
-                    mu_t = avg_soap[atom_type].mean(axis=0)
+                    soapsum = avg_soap[atom_type].mean(axis=0)
                     scatter_mut[atom_type_idx] += np.einsum(
                         "a,b->ab",
                         mu_t,
@@ -804,6 +823,13 @@ class SpatialPCA(FullMethodBase):
         self.spatial_cutoff = cutoff
         self.label = self.label + f'cut_{self.spatial_cutoff}'
         
+    def compute_(self, soap, sum_soaps, cov_t, nsmp, ntimesteps):
+        for atom_type_idx, atom_type in enumerate(self.atomsel_element):
+            sum_soaps[atom_type_idx] += soap[atom_type].sum(axis=0)
+            cov_t[atom_type_idx] += np.einsum("ia,ib->ab", soap[atom_type], soap[atom_type]) #sum over all same atoms (have already summed over all times before) 
+            nsmp[atom_type_idx] += len(atom_type)
+            ntimesteps[atom_type_idx] += 1
+
     def compute_COV(self, traj):
         """
         Compute time-averaged SOAP covariance matrices for each atomic species.
@@ -841,7 +867,7 @@ class SpatialPCA(FullMethodBase):
 
         buffer = np.zeros((first_soap.shape[0], self.interval, first_soap.shape[1]))
         cov_t = np.zeros((len(self.atomsel_element), first_soap.shape[1], first_soap.shape[1],))
-        cov_intra_t = np.zeros((len(self.atomsel_element), first_soap.shape[1], first_soap.shape[1],))
+        sum_soaps = np.zeros((len(self.atomsel_element),first_soap.shape[1],))
         sum_mu_t = np.zeros((len(self.atomsel_element),first_soap.shape[1],))
         scatter_mut = np.zeros((len(self.atomsel_element),first_soap.shape[1], first_soap.shape[1],))
         nsmp = np.zeros(len(self.atomsel_element))
@@ -851,6 +877,7 @@ class SpatialPCA(FullMethodBase):
         kernel /= np.sum(kernel)
         ntimesteps = np.zeros(len(self.atomsel_element), dtype=int)
         logger = np.zeros((len(self.atomsel_element), len(systems), first_soap.shape[1],))
+ 
         for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Computing SOAPs"):
             new_soap_values = self.descriptor.calculate([system])
             avg_soap_values = self.spatial_average_with_nl(system, new_soap_values)
@@ -860,21 +887,25 @@ class SpatialPCA(FullMethodBase):
                 # the buffer contains data from fidx-maxlag to fidx. add a forward ACF
                 avg_soap = np.einsum("j,ija->ia", roll_kernel, buffer) #smoothen
                 avg_soap = self.spatial_averaging(system, avg_soap, self.sigma)
-                for atom_type_idx, atom_type in enumerate(self.atomsel_element):
-                    mu_t = avg_soap[atom_type].mean(axis=0)
-                    scatter_mut[atom_type_idx] += np.einsum(
-                        "a,b->ab",
-                        mu_t,
-                        mu_t,
-                    )
-
-                    sum_mu_t[atom_type_idx] += mu_t #sum over all same atoms
-                    logger[atom_type_idx][fidx] = mu_t
-                    cov_t[atom_type_idx] += np.einsum("ia,ib->ab", avg_soap[atom_type] - mu_t, avg_soap[atom_type] - mu_t)/len(atom_type) #sum over all same atoms (have already summed over all times before)
-                    nsmp[atom_type_idx] += len(atom_type)
-                    ntimesteps[atom_type_idx] += 1
+                self.compute_(avg_soap, sum_soaps, cov_t, nsmp, ntimesteps)
 
             buffer[:,fidx%self.interval,:] = avg_soap_values
+
+        if len(systems) == 1:
+            self.compute_(first_soap, sum_soaps, cov_t, nsmp, ntimesteps)
+
+        mu = np.zeros((len(self.atomsel_element), avg_soap_values.shape[1]))
+        cov = np.zeros((len(self.atomsel_element), avg_soap_values.shape[1], avg_soap_values.shape[1]))
+        
+        # autocorrelation matrix - remove mean
+        for atom_type_idx, atom_type in enumerate(self.atomsel_element):
+            mu[atom_type_idx] = sum_soaps[atom_type_idx]/nsmp[atom_type_idx]
+            # COV = 1/N ExxT - mumuT
+            cov[atom_type_idx] = cov_t[atom_type_idx]/nsmp[atom_type_idx] - np.einsum('i,j->ij', mu[atom_type_idx], mu[atom_type_idx])
+        self.cov_tot = cov
+        return mu, cov, [np.eye(c.shape[0]) for c in cov]
+
+    """            buffer[:,fidx%self.interval,:] = avg_soap_values
         np.savetxt(self.label + '_mu_t.csv', logger[0])
         mean_cov_t = np.zeros((len(self.atomsel_element), new_soap_values.shape[1], new_soap_values.shape[1]))
         mean_cov_intra_t = np.zeros((len(self.atomsel_element), new_soap_values.shape[1], new_soap_values.shape[1]))
@@ -898,18 +929,17 @@ class SpatialPCA(FullMethodBase):
         self.cov_mu_t = cov_mu_t
         
         # temp vs inter
-        return mean_mu_t, cov_mu_t + mean_cov_t, [np.eye(c.shape[0]) for c in cov_mu_t] #mean_cov_t  #+ cov_mu_t
-
+        return mean_mu_t, cov_mu_t + mean_cov_t, [np.eye(c.shape[0]) for c in cov_mu_t] #mean_cov_t  #+ cov_mu_t"""
 
 
     def make_neighborlist(self, cutoff):
-        self.nlist = NeighborList(cutoff=cutoff, full_list=False)
-
+        self.nlist = NeighborList(cutoff=cutoff, full_list=True)
 
 
     def spatial_average_with_nl(self, system, features):
         positions = system.positions  # (N,3) numpy array
         box = system.cell             # 3x3 array or None for non-periodic
+
         i, j, d, D = self.nlist.compute(
             points=positions,
             box=box,
@@ -941,7 +971,7 @@ class SpatialPCA(FullMethodBase):
                 d_neighbors = d_neighbors[best_idx]
                 D_neighbors = D_neighbors[best_idx]
 
-            mask_j = atom_types[j_neighbors] == 8
+            mask_j = atom_types[j_neighbors] == system.types[atom_idx]
             if len(j_neighbors) == 0:
                 averaged_features[idx] = features[idx]
                 continue
@@ -995,9 +1025,9 @@ class SpatialPCA(FullMethodBase):
         -------
         empty
         """
-        metrics = np.array([[np.trace(mean_cov), np.trace(cov_mu)] 
-                    for  mean_cov, cov_mu in zip (self.mean_cov_t, self.cov_mu_t)])
-        header = ["spatialCov_inter", "tempCov"]
+        metrics = np.array([[np.trace(mean_cov)] 
+                    for  mean_cov in self.cov])
+        header = ["spataverageCov"]
 
         # Make metrics a 2D row vector: shape (1, 2)
         np.savetxt(

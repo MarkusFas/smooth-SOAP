@@ -320,7 +320,7 @@ def setup_simulation(**kwargs):
                                 elif method.upper() == 'SPATIALIVAC':
                                     n_cumulants = 1
                                     descriptor = CumulantSOAP_CV(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors, spatial_cutoff)
-                                    method_obj = SpatialIVAC(descriptor, interval, ridge_alpha, spatial_cutoff, run_dir)
+                                    method_obj = SpatialIVAC(descriptor, interval, ridge_alpha, spatial_cutoff, sigma, run_dir)
                                 elif method.upper() == 'SPATIALIVACNORM':
                                     n_cumulants = 1
                                     descriptor = CumulantSOAP_CV(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors, spatial_cutoff)
