@@ -28,5 +28,6 @@ def plot_onion(X, label, sel_atoms, traj):
         ax.legend()
         plt.tight_layout()
         plt.savefig(label + '_onion_states.png', dpi=300)
+        plt.close()
     except Exception as e:
         print(f"An error occurred in plot_onion: {e}")
