@@ -975,14 +975,17 @@ class SpatialPCA(FullMethodBase):
             if len(j_neighbors) == 0:
                 averaged_features[idx] = features[idx]
                 continue
-
+            # TODO: just reuse ....STUPID WILL SAVE ALL COMPUT TIME AND GIVE GOOD RESULTS INSHALLAHs
             w = np.exp(-d_neighbors[mask_j]**2 / (2*self.sigma**2))
-            sel_samples = Labels(
-                names=["atom"],
-                values=torch.tensor(j_neighbors, dtype=torch.int64).unsqueeze(-1),
-            )
-            feats = self.descriptor_spatial.calculate([system], sel_samples)
-            weighted_sum = (w[:, None] * feats).sum(axis=0)
+            indices = np.searchsorted(self.selected_atoms, j_neighbors[mask_j])
+
+            #sel_samples = Labels(
+            #    names=["atom"],
+            #    values=torch.tensor(j_neighbors, dtype=torch.int64).unsqueeze(-1),
+            #)
+            #feats = self.descriptor_spatial.calculate([system], sel_samples)
+            
+            weighted_sum = (w[:, None] * features[indices]).sum(axis=0)
             h_i = (weighted_sum + self_weight * features[idx]) / (self_weight + w.sum())
             averaged_features[idx] = h_i
 
