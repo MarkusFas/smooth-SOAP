@@ -200,7 +200,7 @@ class CumulantSOAP_CV(torch.nn.Module):
             },
             "density": {
                 "type": "Gaussian",
-                "width": 0.25, #changed from 0.3
+                "width": 1, #changed from 0.3 0.25
             },
             "basis": {
                 "type": "TensorProduct",
