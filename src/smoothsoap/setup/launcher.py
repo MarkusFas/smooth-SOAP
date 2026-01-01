@@ -65,7 +65,7 @@ def main():
 
     if input_file is None:
         systems = ['smallcell_interface_350'] #['iron'] 
-        runfiles =  ['test_interval_lf0'] #['run']
+        runfiles = ['test_interval_lf0'] #['run']
 
         yaml_paths = []
         for system, runfile in zip(systems, runfiles):

@@ -2,16 +2,16 @@
 system: iron
 specifier: spatialivacpcatest_5000test
 interval: 1
-sigma: 5
+sigma: 25
 spatial_cutoff: 6
-train_selected_atoms: 200
+train_selected_atoms: 1000
 test_selected_atoms: 5000
 methods: 
-  #- PCAFull
+  - PCAFull
   #- CumulantPCA
   #- SpatialIVAC
   - SpatialPCA
-  #- SpatialIVAC #norm
+  - SpatialIVACnorm
 
 
 input_params:

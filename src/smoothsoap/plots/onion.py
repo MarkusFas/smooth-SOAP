@@ -9,7 +9,7 @@ import ase.io
 def plot_onion(X, atoms, label, delta_t=None):
     #try:
     n_seq, n_particles, n_dim = X.shape
-    for delta_t in [2, n_seq//2, n_seq]:
+    for delta_t in [2, n_seq//8, n_seq//4, n_seq//2, n_seq]:
         data = X.transpose(2,1,0)[0,...]
         # Select time resolution
         reshaped_input_data = helpers.reshape_from_nt(data, delta_t)
@@ -61,14 +61,14 @@ def plot_onion(X, atoms, label, delta_t=None):
         plt.tight_layout()
         plt.savefig(label + f'_onion_states_delta_{delta_t}.png', dpi=300)
         plt.close()
-        print(f"Saved onion states plot with delta_t={delta_t} and colors {colors}")
-        plot_snapshot(labels.reshape(n_particles,-1)[:,0], atoms, label, delta_t, class_to_color)
+        print(f"Saved onion states plot with delta_t={delta_t}")
+        plot_snapshot_onion(labels.reshape(n_particles,-1)[:,0], atoms, label, delta_t, class_to_color)
     #except Exception as e:
     #print(f"An error occurred in plot_onion: {e}")
 
 
 
-def plot_snapshot(labels, atoms, label, delta_t, class_to_color=None):
+def plot_snapshot_onion(labels, atoms, label, delta_t, class_to_color=None):
 
     from ovito.io.ase import ase_to_ovito
     from ovito.pipeline import StaticSource, Pipeline
@@ -113,11 +113,6 @@ def plot_snapshot(labels, atoms, label, delta_t, class_to_color=None):
     # Attach modifier to pipeline
     pipeline.modifiers.append(custom_modifier)
 
-    # ----------------------------
-    # 3. Color particles by class
-    # ----------------------------
-
-
 
     # ----------------------------
     # 4. Render image
@@ -145,4 +140,81 @@ def plot_snapshot(labels, atoms, label, delta_t, class_to_color=None):
     )
     pipeline.remove_from_scene()
     del pipeline
-    print(f"Saved snapshot with {delta_t} with colors {colors_} and classes {classes}")
+    
+
+def plot_snapshot(X, atoms, label):
+
+    from ovito.io.ase import ase_to_ovito
+    from ovito.pipeline import StaticSource, Pipeline
+    from ovito.data import DataCollection
+    from ovito.modifiers import ColorCodingModifier
+    from ovito.vis import Viewport, TachyonRenderer, ParticlesVis
+
+    from matplotlib import colors
+    data = X[...,0] # first PC
+    norm = colors.Normalize(vmin=data.min(), vmax=data.max())
+    normalized_values = norm(data[0]) # plot only first frame 
+    cmap = plt.get_cmap("RdYlBu")   # or tab20, Set1, etc.
+
+    colors_ = cmap(normalized_values)[:,:3]
+# ----------------------------
+    # 1. Create example data
+    # ----------------------------
+    atoms.wrap()
+    selected = [i for i, a in enumerate(atoms) if a.symbol == 'O']
+    atoms_oxy = atoms[selected]
+    # Convert the ASE object to an OVITO DataCollection:
+    N = len(atoms_oxy)
+    
+    data = ase_to_ovito(atoms_oxy)
+    # We may now create a Pipeline object with a StaticSource and use the 
+    # converted dataset as input for a data pipeline:
+    pipeline = Pipeline(source = StaticSource(data = data))
+    # ----------------------------
+    # 2. Custom modifier
+    # ----------------------------
+    def custom_modifier(frame: int, data: DataCollection):
+
+        particles = data.particles_
+
+        particles.create_property(
+            name='Color',
+            data=colors_
+        )
+
+    # Attach modifier to pipeline
+    pipeline.modifiers.append(custom_modifier)
+
+    # ----------------------------
+    # 3. Color particles by class
+    # ----------------------------
+
+
+
+    # ----------------------------
+    # 4. Render image
+    # ----------------------------
+    pipeline.add_to_scene()
+
+    data = pipeline.compute()
+
+    # Particle size
+    data.particles.vis.radius = 0.25
+
+    # Show box
+    data.cell.vis.enabled = True
+    data.cell.vis.line_width = 0.3
+
+    vp = Viewport(type=Viewport.Type.Ortho)
+
+    vp.camera_dir = (0, -1, 0)   # look along -Y
+    vp.camera_up  = (0, 0, 1)    # Z is up → XZ plane
+    vp.zoom_all()
+    vp.render_image(
+        filename=label + f'_snapshot.png',
+        size=(2000, 2000),
+        renderer=TachyonRenderer()
+    )
+    pipeline.remove_from_scene()
+    del pipeline
+    print(f"Saved snapshot")

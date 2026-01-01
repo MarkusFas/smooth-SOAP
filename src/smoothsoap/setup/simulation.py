@@ -8,7 +8,7 @@ from pathlib import Path
 from itertools import chain
 import chemiscope
 
-from smoothsoap.plots.onion import plot_onion
+from smoothsoap.plots.onion import plot_onion, plot_snapshot
 from smoothsoap.plots.cov_heatmap import plot_heatmap
 from smoothsoap.plots.timeseries import plot_projection_atoms, plot_projection_atoms_models
 from smoothsoap.plots.histograms import plot_2pca, plot_2pca_atoms, plot_2pca_height, plot_histogram, plot_2pca_spatial, plot_2pca_spatial_movie
@@ -122,6 +122,13 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
                         plot_onion(proj, trj_predict[0], method.label + f'_ridge_{i}')
                 print(f'Plotted ONION histogram of {method.name} first component')
 
+            if "snapshot" in plots:
+                for i, proj in enumerate(X):
+                    plot_snapshot(proj, trj_predict[0], method.label + f'_{i}') 
+                if kwargs["ridge"]:
+                    for i, proj in enumerate(X_ridge):
+                        plot_snapshot(proj, trj_predict[0], method.label + f'_ridge_{i}')
+                
             if "projection" in plots:
                 plot_projection_atoms(X, [0,1,2,3], method.label, [method.interval]) # need to transpose to T,N,P
                 if kwargs["ridge"]:
