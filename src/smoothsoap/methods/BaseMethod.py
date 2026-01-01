@@ -133,14 +133,14 @@ class FullMethodBase(ABC):
         projected_per_type = []
 
         for trafo in self.transformations:
-            projected = []
-            for system in tqdm(systems, total=len(systems), desc="Predict"):
+            first_soap = self.descriptor.calculate([systems[0]])
+            first_soap = trafo.project(first_soap)
+            projected = np.zeros((len(systems), first_soap.shape[0], first_soap.shape[1]))
+            for i, system in enumerate(systems):
                 descriptor = self.descriptor.calculate([system])
-                descriptor_proj = trafo.project(descriptor)
-                projected.append(descriptor_proj)
-                # TODO:
-                #self.ridge.fit(descriptor, descriptor_proj)
-            projected_per_type.append(np.stack(projected, axis=0).transpose(1, 0, 2))
+                descriptor = trafo.project(descriptor)
+                projected[i] = descriptor
+            projected_per_type.append(projected.transpose(1, 0, 2))
         self.get_explained_variance(traj, selected_atoms)
         return projected_per_type  # shape: (#centers ,N_atoms, T, latent_dim)
     
@@ -189,7 +189,7 @@ class FullMethodBase(ABC):
             print('soapvals',soap_values.shape)
             print('avg_soaps_proj',avg_soaps_projs.shape)
             self.ridge[idx].fit(soap_values, avg_soaps_projs)
-      
+
 
 
     def fit_ridge(self, traj):

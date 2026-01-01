@@ -162,6 +162,9 @@ class ScikitPCA(FullMethodBase):
 
         pca = skPCA(n_components=4)
         pca.fit(avg_soap.reshape(-1, avg_soap.shape[2]))
+        #free memory
+        buffer = None
+        new_soap_values = None
         return pca
 
 
@@ -254,6 +257,8 @@ class PCA(FullMethodBase):
             # COV = 1/N ExxT - mumuT
             cov[atom_type_idx] = cov_t[atom_type_idx]/nsmp[atom_type_idx] - np.einsum('i,j->ij', mu[atom_type_idx], mu[atom_type_idx])
         self.cov_tot = cov
+        buffer = None
+        new_soap_values = None
         return mu, cov, [np.eye(c.shape[0]) for c in cov]
 
 
@@ -281,16 +286,18 @@ class PCA(FullMethodBase):
         systems = systems_to_torch(traj, dtype=torch.float64)
 
         projected_per_type = []
-
+        
         for trafo in self.transformations:
-            projected = []
+            first_soap = self.descriptor.calculate([systems[0]])
+            first_soap = trafo.project(first_soap)
+            projected = np.zeros((len(systems), first_soap[0], first_soap[1]))
             for i, system in enumerate(systems):
-                descriptor = self.descriptor.calculate([traj[i]])
-                descriptor_proj = trafo.project(descriptor)
-                projected.append(descriptor_proj)
+                descriptor = self.descriptor.calculate([system])
+                descriptor = trafo.project(descriptor)
+                projected[i] = descriptor
                 # TODO:
                 #self.ridge.fit(descriptor, descriptor_proj)
-            projected_per_type.append(np.stack(projected, axis=0).transpose(1, 0, 2))
+            projected_per_type.append(projected.transpose(1, 0, 2))
 
         return projected_per_type  # shape: (#centers ,N_atoms, T, latent_dim)
  
@@ -822,7 +829,7 @@ class SpatialPCA(FullMethodBase):
         self.descriptor_spatial = descriptor
         self.spatial_cutoff = cutoff
         self.label = self.label + f'cut_{self.spatial_cutoff}'
-        
+    
     def compute_(self, soap, sum_soaps, cov_t, nsmp, ntimesteps):
         for atom_type_idx, atom_type in enumerate(self.atomsel_element):
             sum_soaps[atom_type_idx] += soap[atom_type].sum(axis=0)
