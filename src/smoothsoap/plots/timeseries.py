@@ -70,3 +70,15 @@ def plot_projection_atoms_models(X_values, PCA_idx, label, intervals):
     plt.savefig(label+'_PCAvectors.png', dpi=200)
     plt.close()
 
+@mpltex.acs_decorator
+def plot_timeseries(X, label, sel_atoms, traj):
+    fig, ax = plt.subplots(1,1, figsize=(12,6))
+    for i, trj in enumerate(X.transpose(1,0,2)): # shape N, T, P
+        #color = 'green' if sel_atoms[i] > 256*3//2 else 'orange'
+        color = np.arange(len(trj[:,0]))
+        ax.plot(
+            trj[:,0],
+            alpha=0.1,
+        )
+    plt.savefig(label + f'_projection_timeseries.png', dpi=200)
+    plt.close()

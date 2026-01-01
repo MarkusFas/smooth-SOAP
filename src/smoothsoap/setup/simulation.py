@@ -75,9 +75,9 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
 
 
             trj_predict = list(chain(*trj_test))
-            print('Starting to fit the Ridge ...')
+            print('Starting to predict ...')
             X = method.predict(trj_predict, test_atoms) ##centers N,T,P
-            print('Finished the Ridge fit')
+            print('Finished the prediction')
             X = [proj.transpose(1,0,2) for proj in X]#centers T,N,P
 
             if kwargs["ridge"]:
@@ -109,18 +109,17 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
                     solver='lbfgs',
                     max_iter=500
                 )
-            
-            
+
             #4 Post processing
 
             plots = kwargs.get("plots", [])
 
             if "onion" in plots:
                 for i, proj in enumerate(X):
-                    plot_onion(proj, method.label + f'_{i}', test_atoms, trj_predict)
+                    plot_onion(proj, trj_predict[0], method.label + f'_{i}') 
                 if kwargs["ridge"]:
                     for i, proj in enumerate(X_ridge):
-                        plot_onion(proj, method.label + f'_ridge_{i}', test_atoms, trj_predict)
+                        plot_onion(proj, trj_predict[0], method.label + f'_ridge_{i}')
                 print(f'Plotted ONION histogram of {method.name} first component')
 
             if "projection" in plots:
@@ -227,10 +226,10 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
             method.label = method.label + '_per_structure'
             if "onion" in plots:
                 for i, proj in enumerate(X):
-                    plot_onion(proj, method.label + f'_{i}', test_atoms, trj_predict)
+                    plot_onion(proj, trj_predict[0], method.label + f'_{i}')
                 if kwargs["ridge"]:
                     for i, proj in enumerate(X_ridge):
-                        plot_onion(proj, method.label + f'_ridge{i}', test_atoms, trj_predict)
+                        plot_onion(proj, trj_predict[0], method.label + f'_ridge{i}')
                 print('Plotted histogram of PCA first component')
 
             if "projection" in plots:
