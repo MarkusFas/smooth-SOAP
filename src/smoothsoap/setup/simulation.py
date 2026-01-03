@@ -8,10 +8,8 @@ from pathlib import Path
 from itertools import chain
 import chemiscope
 
-from smoothsoap.plots.onion import plot_onion, plot_snapshot
 from smoothsoap.plots.cov_heatmap import plot_heatmap
-from smoothsoap.plots.timeseries import plot_projection_atoms, plot_projection_atoms_models
-from smoothsoap.plots.histograms import plot_2pca, plot_2pca_atoms, plot_2pca_height, plot_histogram, plot_2pca_spatial, plot_2pca_spatial_movie
+from smoothsoap.plots.post_processing import post_processing
 from smoothsoap.classifier.Logreg import run_logistic_regression
 
 def run_simulation(trj, trj_test, methods_intervals, **kwargs):
@@ -91,7 +89,7 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
                 #X_ridge = method.predict_ridge(trj[0], train_atoms)
                 X_ridge = method.predict_ridge(trj_predict, test_atoms)
                 X_ridge = [proj.transpose(1,0,2) for proj in X_ridge]
-
+            
             # label the trajectories:
             if kwargs['classify']['request']:
                 if kwargs['classify']['switch_index'] is not None:
@@ -111,85 +109,25 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
                 )
 
             #4 Post processing
-
-            plots = kwargs.get("plots", [])
-
-            if "onion" in plots:
-                for i, proj in enumerate(X):
-                    plot_onion(proj, trj_predict[0], method.label + f'_{i}') 
+            post_processing(X, trj_predict, test_atoms, method, method.label, **kwargs)
+            if kwargs["ridge"]:
+                post_processing(X_ridge, trj_predict, test_atoms, method, method.label + f'_ridge', **kwargs)
+            if kwargs["predict_avg"] and method.name == "SpatialPCA":
+                X_fromavg = method.predict_avg(trj_predict, test_atoms) ##centers N,T,P
+                X_fromavg = [proj.transpose(1,0,2) for proj in X_fromavg]
+                print('Finished the prediction for averaged')
+                post_processing(X_fromavg, trj_predict, test_atoms, method, method.label + f'_fromavg', **kwargs)
+            if kwargs["output_per_structure"]:
+                X = [np.mean(x, axis=1)[:, np.newaxis, :] for x in X]
+                newlabel = method.label + f"_per_structure"
+                post_processing(X, trj_predict, test_atoms, method, newlabel, **kwargs)
                 if kwargs["ridge"]:
-                    for i, proj in enumerate(X_ridge):
-                        plot_onion(proj, trj_predict[0], method.label + f'_ridge_{i}')
-                print(f'Plotted ONION histogram of {method.name} first component')
+                    X_ridge = [np.mean(x, axis=1)[:, np.newaxis, :] for x in X_ridge]
+                    post_processing(X_ridge, trj_predict, test_atoms, method, newlabel+ f'_ridge', **kwargs)
+                if kwargs["predict_avg"] and method.name == "SpatialPCA":
+                    X_fromavg = [np.mean(x, axis=1)[:, np.newaxis, :] for x in X_fromavg]
+                    post_processing(X_fromavg, trj_predict, test_atoms, method, newlabel + f'_fromavg', **kwargs)
 
-            if "snapshot" in plots:
-                for i, proj in enumerate(X):
-                    plot_snapshot(proj, trj_predict[0], method.label + f'_{i}') 
-                if kwargs["ridge"]:
-                    for i, proj in enumerate(X_ridge):
-                        plot_snapshot(proj, trj_predict[0], method.label + f'_ridge_{i}')
-                
-            if "projection" in plots:
-                plot_projection_atoms(X, [0,1,2,3], method.label, [method.interval]) # need to transpose to T,N,P
-                if kwargs["ridge"]:
-                    plot_projection_atoms(X_ridge, [0,1,2,3], method.label + '_ridge', [method.interval]) # need to transpose to T,N,P
-                #plot_projection_atoms_models(X, [0,1,2,3], label, [method.interval])
-                print(f'Plotted projected timeseries for {method.name}')
-
-            if "pca" in plots:
-                for i, proj in enumerate(X):
-                    plot_2pca(proj, method.label + f'_{i}')
-                if kwargs["ridge"]:
-                    for i, proj in enumerate(X_ridge):
-                        plot_2pca(proj, method.label + f'_ridge_{i}')
-                print(f'Plotted scatterplot of {method.name}')
-            
-            if "pca_spatial" in plots:
-                for i, proj in enumerate(X):
-                    plot_2pca_spatial_movie(proj, method.label + f'_{i}', test_atoms, trj_predict)
-                if kwargs["ridge"]:
-                    for i, proj in enumerate(X_ridge):
-                        plot_2pca_spatial_movie(proj, method.label + f'_ridge_{i}', test_atoms, trj_predict)
-                print(f'Plotted spatial of {method.name}')
-
-            if "pca_atoms" in plots:
-                for i, proj in enumerate(X):
-                    plot_2pca_atoms(proj, method.label + f'_{i}', test_atoms)
-                if kwargs["ridge"]:
-                    for i, proj in enumerate(X_ridge):
-                        plot_2pca_atoms(proj, method.label + f'_ridge_{i}', test_atoms)
-                print(f'Plotted scatterplot of {method.name} atoms labels')
-            
-            if "pca_height" in plots:
-                for i, proj in enumerate(X):
-                    plot_2pca_height(proj, method.label + f'_{i}', test_atoms, trj_predict)
-                if kwargs["ridge"]:
-                    for i, proj in enumerate(X_ridge):
-                        plot_2pca_height(proj, method.label + f'_ridge_{i}', test_atoms, trj_predict)
-                print(f'Plotted scatterplot of {method.name} height labels')
-
-            print('Plots saved at ' + method.label)
-
-            if "histogram" in plots:
-                for i, proj in enumerate(X):
-                    plot_histogram(proj, method.label + f'_{i}', test_atoms, trj_predict)
-                if kwargs["ridge"]:
-                    for i, proj in enumerate(X_ridge):
-                        plot_histogram(proj, method.label + f'_ridge_{i}', test_atoms, trj_predict)
-                print(f'Plotted histogram of {method.name} first component')
-
-            if "cs" in plots:
-                cs = chemiscope.show(trj[0],
-                    properties={
-                        "PC[0]": {"target": "atom", "values": X[0][...,0].flatten()},
-                        "PC[1]": {"target": "atom", "values": X[0][...,1].flatten()},
-                        "time": {"target": "atom", "values": np.repeat(np.arange(X[0].shape[0]), X[0].shape[1])},
-                    },
-                    environments = [[i,j,4] for i in range(X[0].shape[0]) for j in test_atoms], # maybe range(X[0].shape[1])
-                    settings=chemiscope.quick_settings(periodic=True, trajectory=True, target="atom", map_settings={"joinPoints": False})
-                )
-                cs.save(method.label + '_cs.json')
-                print("saved chemiscope")
 
             if kwargs["model_save"]:
                 for i, trans in enumerate(method.transformations):
@@ -205,106 +143,5 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
                     #print(f'saved model at {method.root}'+f'/interval_{method.interval}/')    
                     method.descriptor.save_model(path=method.label, name='model_soap') 
 
-            if kwargs["output_per_structure"]:
-                X = [np.mean(x, axis=1)[:, np.newaxis, :] for x in X]
-                X_ridge = [np.mean(x, axis=1)[:, np.newaxis, :] for x in X_ridge]
-            # label the trajectories:
-            if kwargs['classify']['request']:
-                if kwargs['classify']['switch_index'] is not None:
-                    y = method.get_label(trj[0], test_atoms, kwargs['classify']['switch_index'])
-                elif len(trj) > 1:
-                    y = np.concatenate([np.full((len(t),len(test_atoms)), i) for i, t in enumerate(trj)])
-                else:
-                    ValueError("No labels provided for the trajectory. Please provide 'switch_index' or multiple trajectories for classification.")
-
-                # Classificatoin
-                run_logistic_regression(
-                    X[0], y, 
-                    outfile_prefix=method.label + '_logreg',
-                    random_state=42,
-                    solver='lbfgs',
-                    max_iter=500
-                )
-            
-            
-            #4 Post processing
-
-            plots = kwargs.get("plots", [])
-            method.label = method.label + '_per_structure'
-            if "onion" in plots:
-                for i, proj in enumerate(X):
-                    plot_onion(proj, trj_predict[0], method.label + f'_{i}')
-                if kwargs["ridge"]:
-                    for i, proj in enumerate(X_ridge):
-                        plot_onion(proj, trj_predict[0], method.label + f'_ridge{i}')
-                print('Plotted histogram of PCA first component')
-
-            if "projection" in plots:
-                plot_projection_atoms(X, [0,1,2,3], method.label, [method.interval]) # need to transpose to T,N,P
-                if kwargs["ridge"]:
-                    plot_projection_atoms(X_ridge, [0,1,2,3], method.label + '_ridge', [method.interval]) # need to transpose to T,N,P
-                #plot_projection_atoms_models(X, [0,1,2,3], label, [method.interval])
-                print('Plotted projected timeseries for test atoms')
-
-            if "pca" in plots:
-                for i, proj in enumerate(X):
-                    plot_2pca(proj, method.label + f'_{i}')
-                if kwargs["ridge"]:
-                    for i, proj in enumerate(X_ridge):
-                        plot_2pca(proj, method.label + f'_ridge_{i}')
-                print('Plotted scatterplot of PCA')
-
-            if "pca_atoms" in plots:
-                for i, proj in enumerate(X):
-                    plot_2pca_atoms(proj, method.label + f'_{i}', test_atoms)
-                if kwargs["ridge"]:
-                    for i, proj in enumerate(X_ridge):
-                        plot_2pca_atoms(proj, method.label + f'_ridge_{i}', test_atoms)
-                print('Plotted scatterplot of PCA atoms labels')
-            
-            if "pca_height" in plots:
-                for i, proj in enumerate(X):
-                    plot_2pca_height(proj, method.label + f'_{i}', test_atoms, trj_predict)
-                if kwargs["ridge"]:
-                    for i, proj in enumerate(X_ridge):
-                        plot_2pca_height(proj, method.label + f'_ridge_{i}', test_atoms, trj_predict)
-                print('Plotted scatterplot of PCA height labels')
-
-            print('Plots saved at ' + method.label)
-
-            if "histogram" in plots:
-                for i, proj in enumerate(X):
-                    plot_histogram(proj, method.label + f'_{i}', test_atoms, trj_predict)
-                if kwargs["ridge"]:
-                    for i, proj in enumerate(X_ridge):
-                        plot_histogram(proj, method.label + f'_ridge_{i}', test_atoms, trj_predict)
-                print('Plotted histogram of PCA first component')
-
-            if "cs" in plots:
-                cs = chemiscope.show(trj[0],
-                    properties={
-                        "PC[0]": {"target": "atom", "values": X[0][...,0].flatten()},
-                        "PC[1]": {"target": "atom", "values": X[0][...,1].flatten()},
-                        "time": {"target": "atom", "values": np.repeat(np.arange(X[0].shape[0]), X[0].shape[1])},
-                    },
-                    environments = [[i,j,4] for i in range(X[0].shape[0]) for j in test_atoms], # maybe range(X[0].shape[1])
-                    settings=chemiscope.quick_settings(periodic=True, trajectory=True, target="atom", map_settings={"joinPoints": False})
-                )
-                cs.save(method.label + '_cs.json')
-                print("saved chemiscope")
-                    
-    if ("heatmap" in plots) and len(methods_intervals) >= 2:
-        interval_0 = methods_intervals[0]
-        interval_1 = methods_intervals[1]
-        cov1_int0 = interval_0[0].cov_mu_t
-        cov2_int0 = interval_0[0].mean_cov_t
-        cov1_int1 = interval_1[0].cov_mu_t
-        cov2_int1 = interval_1[0].mean_cov_t
-        for i, center in enumerate(interval_0[0].descriptor.centers):
-            plot_heatmap(cov1_int0[i], cov1_int1[i], method.root + f'_temporal_interval{interval_0[0].interval}{interval_1[0].interval}_center{center}' + f'_{i}')
-            plot_heatmap(cov2_int0[i], cov2_int1[i], method.root + f'_spatial_interval{interval_0[0].interval}{interval_1[0].interval}_center{center}' + f'_{i}')
-        print('Plotted heatmap')
- 
-    
 if __name__ == '__main__':
     print('Nothing to do here')

@@ -64,8 +64,8 @@ def main():
     #input_file = 'systems/ala/run0.yaml'
 
     if input_file is None:
-        systems = ['smallcell_interface_350'] #['iron'] 
-        runfiles = ['test_interval_lf0'] #['run']
+        systems = ['chignolin']#['smallcell_interface_350', 'smallcell_interface_350', 'smallcell_interface_350', 'smallcell_interface_350', 'smallcell_interface_350'] #['iron'] 
+        runfiles = ['run0']#['test_interval_lf0', 'test_interval_lf1', 'test_interval_lf2', 'test_interval_lf3', 'test_interval_lf4'] #['run'] 
 
         yaml_paths = []
         for system, runfile in zip(systems, runfiles):
