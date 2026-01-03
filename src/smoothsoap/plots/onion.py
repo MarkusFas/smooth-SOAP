@@ -6,7 +6,7 @@ from ase import Atoms
 import ase.io
 
 
-def plot_onion(X, atoms, label, delta_t=None):
+def plot_onion(X, atoms, test_atoms, label, delta_t=None):
     #try:
     n_seq, n_particles, n_dim = X.shape
     for delta_t in [2, n_seq//8, n_seq//4, n_seq//2, n_seq]:
@@ -62,13 +62,13 @@ def plot_onion(X, atoms, label, delta_t=None):
         plt.savefig(label + f'_onion_states_delta_{delta_t}.png', dpi=300)
         plt.close()
         print(f"Saved onion states plot with delta_t={delta_t}")
-        plot_snapshot_onion(labels.reshape(n_particles,-1)[:,0], atoms, label, delta_t, class_to_color)
+        plot_snapshot_onion(labels.reshape(n_particles,-1)[:,0], atoms, test_atoms, label, delta_t, class_to_color)
     #except Exception as e:
     #print(f"An error occurred in plot_onion: {e}")
 
 
 
-def plot_snapshot_onion(labels, atoms, label, delta_t, class_to_color=None):
+def plot_snapshot_onion(labels, atoms, test_atoms, label, delta_t, class_to_color=None):
 
     from ovito.io.ase import ase_to_ovito
     from ovito.pipeline import StaticSource, Pipeline
@@ -82,8 +82,14 @@ def plot_snapshot_onion(labels, atoms, label, delta_t, class_to_color=None):
     # 1. Create example data
     # ----------------------------
     atoms.wrap()
-    selected = [i for i, a in enumerate(atoms) if a.symbol == 'O']
-    atoms_oxy = atoms[selected]
+    # TODO generalise for multiple centers
+    selected = test_atoms #[i for i, a in enumerate(atoms) if a.symbol == 'C']
+    atoms_oxy = atoms[selected].copy()
+
+    # Remove string / unsupported arrays
+    for key in list(atoms_oxy.arrays.keys()):
+        if atoms_oxy.arrays[key].dtype.kind not in "iuf":
+            del atoms_oxy.arrays[key]
     # Convert the ASE object to an OVITO DataCollection:
     N = len(atoms_oxy)
     
@@ -142,7 +148,7 @@ def plot_snapshot_onion(labels, atoms, label, delta_t, class_to_color=None):
     del pipeline
     
 
-def plot_snapshot(X, atoms, label):
+def plot_snapshot(X, atoms, test_atoms, label):
 
     from ovito.io.ase import ase_to_ovito
     from ovito.pipeline import StaticSource, Pipeline
@@ -161,8 +167,14 @@ def plot_snapshot(X, atoms, label):
     # 1. Create example data
     # ----------------------------
     atoms.wrap()
-    selected = [i for i, a in enumerate(atoms) if a.symbol == 'O']
-    atoms_oxy = atoms[selected]
+    #TODO generalise for multiple centers
+    selected = test_atoms #[i for i, a in enumerate(atoms) if a.symbol == 'O']
+    atoms_oxy = atoms[selected].copy()
+
+    # Remove string / unsupported arrays
+    for key in list(atoms_oxy.arrays.keys()):
+        if atoms_oxy.arrays[key].dtype.kind not in "iuf":
+            del atoms_oxy.arrays[key]
     # Convert the ASE object to an OVITO DataCollection:
     N = len(atoms_oxy)
     
