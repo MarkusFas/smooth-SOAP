@@ -38,6 +38,7 @@ DEFAULT_PARAMS = {
 
     "plots": ["projection"],
     "ridge": False,
+    "predict_avg": False,
     "ridge_alpha": 0,
     "ridge_save": True,
     "model_save": False,
