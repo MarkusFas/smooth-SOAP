@@ -253,7 +253,6 @@ def setup_simulation(**kwargs):
 
     methods_intervals = []  # nested list: intervals x methods
     lag = kwargs.get("lag")
-    sigma = kwargs.get("sigma")[0] #TODO loop over multiple sigmas should be possible
     for interval in kwargs.get('interval'):
         used_methods = []
         for lag in kwargs.get('lag'):

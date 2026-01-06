@@ -143,7 +143,7 @@ class FullMethodBase(ABC):
             projected_per_type.append(projected.transpose(1, 0, 2))
         self.get_explained_variance(traj, selected_atoms)
         return projected_per_type  # shape: (#centers ,N_atoms, T, latent_dim)
-    
+
     def fit_ridge_nonincremental(self, traj):
         systems = systems_to_torch(traj, dtype=torch.float64)
         soap_block = self.descriptor.calculate(systems[:1], selected_samples=self.descriptor.selected_samples)
@@ -165,17 +165,19 @@ class FullMethodBase(ABC):
             avg_soaps_projs=np.zeros((first_soap.shape[0],len(systems)-self.interval, avg_soap_proj.shape[-1]))
             for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Fit Ridge"):
                 new_soap_values = self.descriptor.calculate([system], selected_samples=self.descriptor.selected_samples)
+                buffer[:,fidx%self.interval,:] = new_soap_values
                 if fidx >= self.interval:
                     roll_kernel = np.roll(kernel, fidx%self.interval)
                     # computes a contribution to the correlation function
                     # the buffer contains data from fidx-maxlag to fidx. add a forward ACF
                     avg_soap = np.einsum("j,ija->ia", roll_kernel, buffer) #smoothen
+                    avg_soap = new_soap_values
                     avg_soap_proj = trafo.project(avg_soap)
                     #print('projshape', avg_soap_proj.shape)
                     #print('nonprog.shape',new_soap_values.shape)
                     soap_values[:,fidx-self.interval,:] = new_soap_values
                     avg_soaps_projs[:,fidx-self.interval,:] = avg_soap_proj
-                buffer[:,fidx%self.interval,:] = new_soap_values
+                
             #soap_values=soap_values.reshape((soap_values.shape[0]*soap_values.shape[1],soap_values.shape[2]))
             #avg_soaps_projs=avg_soaps_projs.reshape((avg_soaps_projs[0]*avg_soaps_projs[1],avg_soaps_projs.shape[2]))
             if len(systems) == 1:
@@ -406,15 +408,6 @@ class FullMethodBase(ABC):
                 self.label + f"_center{self.descriptor.centers[i]}" + f"EVR_ridge.pt",
             )
             print('Explained ridge variance ratio: ', EVR)
-
-
-
-
-
-
-
-
-
 
 
 
