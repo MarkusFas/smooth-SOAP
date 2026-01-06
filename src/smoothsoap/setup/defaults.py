@@ -39,11 +39,11 @@ DEFAULT_PARAMS = {
     "plots": ["projection"],
     "ridge": False,
     "predict_avg": False,
-    "ridge_alpha": 0,
+    "ridge_alpha": 1e-5,
     "ridge_save": True,
     "model_save": False,
     "model_proj_dims": [0],
-    
+    "i_pca": 0,
     "classify": {
         "request": False,
         "switch_index": None,

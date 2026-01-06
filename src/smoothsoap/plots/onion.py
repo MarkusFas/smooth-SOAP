@@ -6,11 +6,13 @@ from ase import Atoms
 import ase.io
 
 
-def plot_onion(X, atoms, test_atoms, label, delta_t=None):
+def plot_onion(X, atoms, test_atoms, label, delta_t=None, i_pca=0):
     #try:
     n_seq, n_particles, n_dim = X.shape
     for delta_t in [2, n_seq//8, n_seq//4, n_seq//2, n_seq]:
-        data = X.transpose(2,1,0)[0,...]
+        if delta_t == 1:
+            continue
+        data = X.transpose(2,1,0)[i_pca,...]
         # Select time resolution
         reshaped_input_data = helpers.reshape_from_nt(data, delta_t)
         # Run Onion Clustering
@@ -148,7 +150,7 @@ def plot_snapshot_onion(labels, atoms, test_atoms, label, delta_t, class_to_colo
     del pipeline
     
 
-def plot_snapshot(X, atoms, test_atoms, label):
+def plot_snapshot(X, atoms, test_atoms, label, i_pca=0):
 
     from ovito.io.ase import ase_to_ovito
     from ovito.pipeline import StaticSource, Pipeline
@@ -157,7 +159,7 @@ def plot_snapshot(X, atoms, test_atoms, label):
     from ovito.vis import Viewport, TachyonRenderer, ParticlesVis
 
     from matplotlib import colors
-    data = X[...,0] # first PC
+    data = X[...,i_pca] # first PC
     norm = colors.Normalize(vmin=data.min(), vmax=data.max())
     normalized_values = norm(data[0]) # plot only first frame 
     cmap = plt.get_cmap("RdYlBu")   # or tab20, Set1, etc.

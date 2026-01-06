@@ -7,15 +7,15 @@ from smoothsoap.plots.histograms import plot_2pca, plot_2pca_atoms, plot_2pca_he
 
 def post_processing(X, trj_predict, test_atoms, method, label, **kwargs):
     plots = kwargs.get("plots", [])
-
+    i_pca = kwargs.get("i_pca")
     if "onion" in plots:
         for i, proj in enumerate(X):
-            plot_onion(proj, trj_predict[0], test_atoms, label + f'_{i}') 
+            plot_onion(proj, trj_predict[0], test_atoms, label + f'_{i}', i_pca=i_pca) 
         print(f'Plotted ONION histogram of {method.name} first component')
 
     if "snapshot" in plots:
         for i, proj in enumerate(X):
-            plot_snapshot(proj, trj_predict[0], test_atoms, label + f'_{i}') 
+            plot_snapshot(proj, trj_predict[0], test_atoms, label + f'_{i}', i_pca=i_pca) 
 
     if "projection" in plots:
         plot_projection_atoms(X, [0,1,2,3], label, [method.interval]) # need to transpose to T,N,P
@@ -43,7 +43,7 @@ def post_processing(X, trj_predict, test_atoms, method, label, **kwargs):
 
     if "histogram" in plots:
         for i, proj in enumerate(X):
-            plot_histogram(proj, label + f'_{i}', test_atoms, trj_predict)
+            plot_histogram(proj, label + f'_{i}', test_atoms, trj_predict, i_pca=i_pca)
         print(f'Plotted histogram of {method.name} first component')
 
     print('Plots saved at ' + method.label)

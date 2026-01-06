@@ -73,11 +73,6 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
 
 
             trj_predict = list(chain(*trj_test))
-            print('Starting to predict ...')
-            X = method.predict(trj_predict, test_atoms) ##centers N,T,P
-            print('Finished the prediction')
-            X = [proj.transpose(1,0,2) for proj in X]#centers T,N,P
-
             if kwargs["ridge"]:
                 #method.fit_ridge(trj_predict)
                 print('Starting to fit the Ridge ...')
@@ -90,6 +85,11 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
                 X_ridge = method.predict_ridge(trj_predict, test_atoms)
                 X_ridge = [proj.transpose(1,0,2) for proj in X_ridge]
             
+            print('Starting to predict ...')
+            X = method.predict(trj_predict, test_atoms) ##centers N,T,P
+            print('Finished the prediction')
+            X = [proj.transpose(1,0,2) for proj in X]#centers T,N,P
+
             # label the trajectories:
             if kwargs['classify']['request']:
                 if kwargs['classify']['switch_index'] is not None:
@@ -112,7 +112,7 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
             post_processing(X, trj_predict, test_atoms, method, method.label, **kwargs)
             if kwargs["ridge"]:
                 post_processing(X_ridge, trj_predict, test_atoms, method, method.label + f'_ridge', **kwargs)
-            if kwargs["predict_avg"] and method.name == "SpatialPCA":
+            if kwargs["predict_avg"] and (method.name == "SpatialPCA" or method.name == "PCAfull"):
                 X_fromavg = method.predict_avg(trj_predict, test_atoms) ##centers N,T,P
                 X_fromavg = [proj.transpose(1,0,2) for proj in X_fromavg]
                 print('Finished the prediction for averaged')
@@ -124,7 +124,7 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
                 if kwargs["ridge"]:
                     X_ridge = [np.mean(x, axis=1)[:, np.newaxis, :] for x in X_ridge]
                     post_processing(X_ridge, trj_predict, test_atoms, method, newlabel+ f'_ridge', **kwargs)
-                if kwargs["predict_avg"] and method.name == "SpatialPCA":
+                if kwargs["predict_avg"] and (method.name == "SpatialPCA" or method.name == "PCAfull"):
                     X_fromavg = [np.mean(x, axis=1)[:, np.newaxis, :] for x in X_fromavg]
                     post_processing(X_fromavg, trj_predict, test_atoms, method, newlabel + f'_fromavg', **kwargs)
 

@@ -504,6 +504,54 @@ class PCAfull(FullMethodBase):
         super().__init__(descriptor, interval, lag=0, root=root, sigma=0, ridge_alpha=ridge_alpha, method=self.name)
 
 
+    def predict_avg(self, traj, selected_atoms):
+        """
+        Project new trajectory frames into the trained collective variable (CV) space.
+
+        Parameters
+        ----------
+        traj : list[ase.Atoms]
+            Trajectory to project.
+        selected_atoms : list[int]
+            Indices of atoms to project.
+
+        Returns
+        -------
+        np.ndarray, shape (n_atoms, n_frames, n_components)
+            Projected low-dimensional representation.
+        """
+        if self.transformations is None:
+            raise RuntimeError("Call train() before predict().")
+
+        self.selected_atoms = selected_atoms
+        self.descriptor.set_samples(selected_atoms)
+        systems = systems_to_torch(traj, dtype=torch.float64)
+
+        projected_per_type = []
+
+        for trafo in self.transformations:
+            descriptor = self.descriptor.calculate([systems[0]])
+            buffer = np.zeros((descriptor.shape[0], self.interval, descriptor.shape[1]))
+            transformed = trafo.project(descriptor)
+            projected = np.zeros((len(systems) - self.interval, transformed.shape[0], transformed.shape[1]))
+            delta=np.zeros(self.interval)
+            delta[self.interval//2]=1
+            kernel=gaussian_filter(delta,sigma=(self.interval-1))#gaussian_filter(delta,sigma=(self.interval-1)//(2*3)) # cutoff at 3 sigma, leaves 0.1%
+            kernel /= np.sum(kernel)
+            for i, system in enumerate(systems):
+                buffer[:,i%self.interval,:] = descriptor
+                if i >= self.interval:
+                    roll_kernel = np.roll(kernel, i%self.interval)
+                    avg_soap = np.einsum("j,ija->ia", roll_kernel, buffer)
+                    avg_soap = trafo.project(avg_soap)
+                    projected[i-self.interval] = avg_soap
+                descriptor = self.descriptor.calculate([system])
+                
+            projected_per_type.append(projected.transpose(1, 0, 2))
+        self.get_explained_variance(traj, selected_atoms)
+        return projected_per_type  # shape: (#centers ,N_atoms, T, latent_dim)
+
+
     def compute_(self, soap, scatter_mut, sum_mu_t, cov_t, nsmp, ntimesteps):   
         for atom_type_idx, atom_type in enumerate(self.atomsel_element):
             mu_t = soap[atom_type].mean(axis=0)
@@ -661,165 +709,6 @@ class PCAfull(FullMethodBase):
                 self.label + f"_center{self.descriptor.centers[i]}" + f"_properties.pt",
             )
 
-       
-
-class SpatialPCA(FullMethodBase):
-
-    def __init__(self, descriptor, interval, sigma, ridge_alpha, root):
-        self.name = 'SpatialPCA'
-        super().__init__(descriptor, interval, lag=0, root=root, sigma=sigma, ridge_alpha=ridge_alpha, method=self.name)
-
-
-    def compute_(self, soap, scatter_mut, sum_mu_t, cov_t, nsmp, ntimesteps):
-        for atom_type_idx, atom_type in enumerate(self.atomsel_element):
-            #COV_intra_cluster, COV_inter_cluster = self.full_spatial_averaging(system, avg_soap, self.sigma)
-            mu_t = soap[atom_type].mean(axis=0)
-            scatter_mut[atom_type_idx] += np.einsum(
-                "a,b->ab",
-                mu_t,
-                mu_t,
-            )
-
-            sum_mu_t[atom_type_idx] += mu_t #sum over all same atoms
-
-            #cov_t[atom_type_idx] += np.einsum("ia,ib->ab", avg_soap[atom_type] - mu_t, avg_soap[atom_type] - mu_t)/len(atom_type) #sum over all same atoms (have already summed over all times before) 
-            cov_t[atom_type_idx] += COV_inter_cluster
-            cov_intra_t[atom_type_idx] += COV_intra_cluster
-            nsmp[atom_type_idx] += len(atom_type)
-            ntimesteps[atom_type_idx] += 1
-
-    def compute_COV(self, traj):
-        """
-        Compute time-averaged SOAP covariance matrices for each atomic species.
-
-        This method computes the temporal and ensemble covariance of SOAP 
-        descriptors for different atomic species over a molecular dynamics 
-        trajectory. It uses a Gaussian kernel to smooth SOAP vectors in time 
-        and separates intra-atomic (within-atom) and inter-atomic (between-atoms)
-        covariance contributions.
-
-        Parameters
-        ----------
-        traj : ase.io.Trajectory or list of ase.Atoms
-            Molecular dynamics trajectory containing atomic configurations 
-            for which the SOAP descriptors are computed.
-
-        Returns
-        -------
-        mean_mu_t : np.ndarray, shape (n_species, n_features)
-            Time-averaged mean SOAP vector for each atomic species.
-        mean_cov_t : np.ndarray, shape (n_species, n_features, n_features)
-            Mean covariance of SOAP descriptors across all timesteps and atoms 
-            of a given species.
-        cov_mu_t : np.ndarray, shape (n_species, n_features, n_features)
-            Temporal covariance of SOAP descriptor means (fluctuations in time).
-        """
-        systems = systems_to_torch(traj, dtype=torch.float64)
-        soap_block = self.descriptor.calculate(systems[:1])
-        first_soap =  soap_block  
-        self.atomsel_element = [[idx for idx, label in enumerate(self.descriptor.soap_block.samples.values.numpy()) if label[2] == atom_type] for atom_type in self.descriptor.centers]
-        if soap_block.shape[0] == 1:
-            self.atomsel_element = [[0] for atom_type in self.descriptor.centers]
-        buffer = np.zeros((first_soap.shape[0], self.interval, first_soap.shape[1]))
-        cov_t = np.zeros((len(self.atomsel_element), first_soap.shape[1], first_soap.shape[1],))
-        cov_intra_t = np.zeros((len(self.atomsel_element), first_soap.shape[1], first_soap.shape[1],))
-        sum_mu_t = np.zeros((len(self.atomsel_element),first_soap.shape[1],))
-        scatter_mut = np.zeros((len(self.atomsel_element),first_soap.shape[1], first_soap.shape[1],))
-        nsmp = np.zeros(len(self.atomsel_element))
-        delta=np.zeros(self.interval)
-        delta[self.interval//2]=1
-        kernel=gaussian_filter(delta,sigma=(self.interval-1)//(2*3)) # cutoff at 3 sigma, leaves 0.1%
-        ntimesteps = np.zeros(len(self.atomsel_element), dtype=int)
-
-        for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Computing SOAPs"):
-            new_soap_values = self.descriptor.calculate([system])
-            avg_soap_values = self.spatial_average_with_nl([system], new_soap_values)
-            if fidx >= self.interval:
-                roll_kernel = np.roll(kernel, fidx%self.interval)
-                # computes a contribution to the correlation function
-                # the buffer contains data from fidx-maxlag to fidx. add a forward ACF
-                avg_soap = np.einsum("j,ija->ia", roll_kernel, buffer) #smoothen
-                self.compute_()
-                for atom_type_idx, atom_type in enumerate(self.atomsel_element):
-                    
-                    #COV_intra_cluster, COV_inter_cluster = self.full_spatial_averaging(system, avg_soap, self.sigma)
-                    soapsum = avg_soap[atom_type].mean(axis=0)
-                    scatter_mut[atom_type_idx] += np.einsum(
-                        "a,b->ab",
-                        mu_t,
-                        mu_t,
-                    )
-
-                    sum_mu_t[atom_type_idx] += mu_t #sum over all same atoms
-
-                    #cov_t[atom_type_idx] += np.einsum("ia,ib->ab", avg_soap[atom_type] - mu_t, avg_soap[atom_type] - mu_t)/len(atom_type) #sum over all same atoms (have already summed over all times before) 
-                    cov_t[atom_type_idx] += COV_inter_cluster
-                    cov_intra_t[atom_type_idx] += COV_intra_cluster
-                    nsmp[atom_type_idx] += len(atom_type)
-                    ntimesteps[atom_type_idx] += 1
-
-            buffer[:,fidx%self.interval,:] = avg_soap_values
-
-        mean_cov_t = np.zeros((len(self.atomsel_element), new_soap_values.shape[1], new_soap_values.shape[1]))
-        mean_cov_intra_t = np.zeros((len(self.atomsel_element), new_soap_values.shape[1], new_soap_values.shape[1]))
-        cov_mu_t = np.zeros((len(self.atomsel_element), new_soap_values.shape[1], new_soap_values.shape[1]))
-        mean_mu_t = np.zeros((len(self.atomsel_element), first_soap.shape[1],))
-
-        # autocorrelation matrix - remove mean
-        for atom_type_idx, atom_type in enumerate(self.atomsel_element): 
-            mean_cov_t[atom_type_idx] = cov_t[atom_type_idx]/ntimesteps[atom_type_idx]
-            mean_cov_intra_t[atom_type_idx] = cov_intra_t[atom_type_idx]/ntimesteps[atom_type_idx]
-            # COV = 1/N ExxT - mumuT
-            mean_mu_t[atom_type_idx] = sum_mu_t[atom_type_idx]/ntimesteps[atom_type_idx]
-            # add temporal covariance
-            cov_mu_t[atom_type_idx] = scatter_mut[atom_type_idx]/ntimesteps[atom_type_idx] - np.einsum('i,j->ij', mean_mu_t[atom_type_idx], mean_mu_t[atom_type_idx])
-
-        #all_soap_values = eval_SOAP(systems, calculator, sel, atomsel).values.numpy()
-        #C_np = np.cov(all_soap_values, rowvar=False, bias=True)   # population covariance
-        #print(np.allclose(C_np, avgcc[0], atol=1e-8))
-
-        self.mean_mu_t = mean_mu_t
-        self.mean_cov_t = mean_cov_t
-        self.mean_cov_intra_t = mean_cov_intra_t
-        self.cov_mu_t = cov_mu_t
-
-        # inter vs intra
-        #return mean_mu_t, mean_cov_t, mean_cov_intra_t  #+ cov_mu_t
-        # intra vs inter
-        return mean_mu_t, mean_cov_intra_t, mean_cov_t  #+ cov_mu_t
-
-        # FULL
-        #return mean_mu_t, mean_cov_t + mean_cov_intra_t + cov_mu_t, [np.eye(c.shape[0]) for c in cov_mu_t]
-
-
-
-
-
-
-
-    def log_metrics(self):
-        """
-        Log metrics from the run, including the covariances.
-
-
-        Returns
-        -------
-        empty
-        """
-        metrics = np.array([[np.trace(mean_cov_intra), np.trace(mean_cov), np.trace(cov_mu)] 
-                    for mean_cov_intra, mean_cov, cov_mu in zip(self.mean_cov_intra_t, self.mean_cov_t, self.cov_mu_t)])
-        header = ["spatialCov_intra", "spatialCov_inter", "tempCov"]
-
-        # Make metrics a 2D row vector: shape (1, 2)
-        np.savetxt(
-            self.label + "_.csv",
-            metrics,
-            fmt="%.6f",
-            delimiter="\t",
-            header="\t".join(header),
-            comments=""
-        )
-
 
 class SpatialPCA(FullMethodBase):
 
@@ -830,6 +719,94 @@ class SpatialPCA(FullMethodBase):
         self.spatial_cutoff = cutoff
         self.label = self.label + f'cut_{self.spatial_cutoff}'
     
+
+    def fit_ridge_nonincremental(self, traj):
+        systems = systems_to_torch(traj, dtype=torch.float64)
+        soap_block = self.descriptor.calculate(systems[:1], selected_samples=self.descriptor.selected_samples)
+        first_soap = soap_block  
+        first_soap = self.spatial_average_with_nl(systems[0], first_soap)
+        buffer = np.zeros((first_soap.shape[0], self.interval, first_soap.shape[1]))
+        delta=np.zeros(self.interval)
+        delta[self.interval//2]=1
+        kernel=gaussian_filter(delta,sigma=(self.interval-1)//(2)) # cutoff at 3 sigma, leaves 0.1%
+        kernel /= kernel.sum() #kernel = delta
+        self.ridge = {}
+        if self.interval > 1:
+            raise ValueError("Not  possible to time average SpatailPCA")
+        for idx, trafo in enumerate(self.transformations):
+            self.ridge[idx] = Ridge(alpha=self.ridge_alpha, fit_intercept=False)
+            avg_soap_proj = trafo.project(first_soap) 
+            print('avg_soap_proj',avg_soap_proj.shape)
+            soap_values=np.zeros((first_soap.shape[0],len(systems)-self.interval, first_soap.shape[1]))
+            avg_soaps_projs=np.zeros((first_soap.shape[0],len(systems)-self.interval, avg_soap_proj.shape[-1]))
+            
+            for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Fit Ridge"):
+                new_soap_values = self.descriptor.calculate([system], selected_samples=self.descriptor.selected_samples)
+                soap_spatial_avg = self.spatial_average_with_nl(system, new_soap_values)
+
+                avg_soap_proj = trafo.project(soap_spatial_avg)
+
+                soap_values[:,fidx-self.interval,:] = new_soap_values
+                avg_soaps_projs[:,fidx-self.interval,:] = avg_soap_proj
+                
+            #soap_values=soap_values.reshape((soap_values.shape[0]*soap_values.shape[1],soap_values.shape[2]))
+            #avg_soaps_projs=avg_soaps_projs.reshape((avg_soaps_projs[0]*avg_soaps_projs[1],avg_soaps_projs.shape[2]))
+            if len(systems) == 1:
+                soap_values = first_soap[:,None,:]
+                avg_soaps_projs = trafo.project(first_soap)[:,None,:]
+
+            soap_values=soap_values.reshape(soap_values.shape[0]*soap_values.shape[1],soap_values.shape[2])
+            avg_soaps_projs=avg_soaps_projs.reshape(avg_soaps_projs.shape[0]*avg_soaps_projs.shape[1],avg_soaps_projs.shape[2])
+            #np.reshape(avg_soaps_projs.soap_values,(avg_soaps_projs.shape[0]*avg_soaps_projs.shape[1],avg_soaps_projs.shape[2]))
+            #p.reshape(avg_soaps_projs,(avg_soaps_projs[0]*avg_soaps_projs[1],avg_soaps_projs.shape[2]))
+            print('soapvals',soap_values.shape)
+            print('avg_soaps_proj',avg_soaps_projs.shape)
+            self.ridge[idx].fit(soap_values, avg_soaps_projs)
+
+
+
+
+
+    def predict_avg(self, traj, selected_atoms):
+        """
+        Project new trajectory frames into the trained collective variable (CV) space.
+
+        Parameters
+        ----------
+        traj : list[ase.Atoms]
+            Trajectory to project.
+        selected_atoms : list[int]
+            Indices of atoms to project.
+
+        Returns
+        -------
+        np.ndarray, shape (n_atoms, n_frames, n_components)
+            Projected low-dimensional representation.
+        """
+        if self.transformations is None:
+            raise RuntimeError("Call train() before predict().")
+
+        self.selected_atoms = selected_atoms
+        self.descriptor.set_samples(selected_atoms)
+        systems = systems_to_torch(traj, dtype=torch.float64)
+
+        projected_per_type = []
+
+        for trafo in self.transformations:
+            first_soap = self.descriptor.calculate([systems[0]])
+            first_soap = self.spatial_average_with_nl(systems[0], first_soap)
+            first_soap = trafo.project(first_soap)
+            projected = np.zeros((len(systems), first_soap.shape[0], first_soap.shape[1]))
+            for i, system in enumerate(systems):
+                descriptor = self.descriptor.calculate([system])
+                descriptor = self.spatial_average_with_nl(system, descriptor)
+                descriptor = trafo.project(descriptor)
+                projected[i] = descriptor
+            projected_per_type.append(projected.transpose(1, 0, 2))
+        self.get_explained_variance(traj, selected_atoms)
+        return projected_per_type  # shape: (#centers ,N_atoms, T, latent_dim)
+
+ 
     def compute_(self, soap, sum_soaps, cov_t, nsmp, ntimesteps):
         for atom_type_idx, atom_type in enumerate(self.atomsel_element):
             sum_soaps[atom_type_idx] += soap[atom_type].sum(axis=0)
@@ -893,7 +870,7 @@ class SpatialPCA(FullMethodBase):
                 # computes a contribution to the correlation function
                 # the buffer contains data from fidx-maxlag to fidx. add a forward ACF
                 avg_soap = np.einsum("j,ija->ia", roll_kernel, buffer) #smoothen
-                avg_soap = self.spatial_averaging(system, avg_soap, self.sigma)
+                #avg_soap = self.spatial_averaging(system, avg_soap, self.sigma)
                 self.compute_(avg_soap, sum_soaps, cov_t, nsmp, ntimesteps)
 
             buffer[:,fidx%self.interval,:] = avg_soap_values
@@ -982,7 +959,6 @@ class SpatialPCA(FullMethodBase):
             if len(j_neighbors) == 0:
                 averaged_features[idx] = features[idx]
                 continue
-            # TODO: just reuse ....STUPID WILL SAVE ALL COMPUT TIME AND GIVE GOOD RESULTS INSHALLAHs
             w = np.exp(-d_neighbors[mask_j]**2 / (2*self.sigma**2))
             indices = np.searchsorted(self.selected_atoms, j_neighbors[mask_j])
 
@@ -998,11 +974,52 @@ class SpatialPCA(FullMethodBase):
 
         return averaged_features
 
+    def spatial_average_with_nl(self, system, features):
+        positions = system.positions  # (N,3) numpy array
+        box = system.cell             # 3x3 array or None for non-periodic
 
-
-
-
-
+        i, j, d, D = self.nlist.compute(
+            points=positions,
+            box=box,
+            periodic=True,
+            quantities="ijdD"
+        )
+        sort_idx = np.lexsort((d, j, i))  # primary i, secondary j, tertiary d
+        i_sorted = i[sort_idx]
+        j_sorted = j[sort_idx]
+        d_sorted = d[sort_idx]
+        S_sorted = D[sort_idx]
+        mask = np.ones(len(i_sorted), dtype=bool)
+        mask[1:] = (i_sorted[1:] != i_sorted[:-1]) | (j_sorted[1:] != j_sorted[:-1])
+        i = i_sorted[mask]
+        j = j_sorted[mask]
+        d = d_sorted[mask]
+        S = S_sorted[mask]
+        feats = np.zeros_like(features)
+        self_weight = 1.0
+        atom_types = system.types.numpy()
+        #for idx, atom_idx in enumerate(np.unique(i)):
+        for idx, atom_idx in enumerate(self.selected_atoms):
+            mask_i = i == atom_idx 
+            j_neighbors = j[mask_i]
+            d_neighbors = d[mask_i]
+            S_neighbors = D[mask_i]
+            mask_j = atom_types[j_neighbors] == system.types[atom_idx]
+            w = np.exp(-d_neighbors[mask_j]**2 / (2*self.sigma**2))
+            indices = np.searchsorted(self.selected_atoms, j_neighbors[mask_j])
+            #w = np.exp(-d_neighbors**2 / (2*self.sigma**2))
+            #indices = np.searchsorted(self.selected_atoms, j_neighbors)
+            #sel_samples = Labels(
+            #    names=["atom"],
+            #    values=torch.tensor(j_neighbors, dtype=torch.int64).unsqueeze(-1),
+            #)
+            #feats = self.descriptor_spatial.calculate([system], sel_samples)
+            
+            weighted_sum = (w[:, None] * features[indices]).sum(axis=0)
+            h_i = (weighted_sum + self_weight * features[idx]) / (self_weight + w.sum())
+        
+            feats[idx] = h_i
+        return feats
 
     """
         self.nlist.update(system.positions)
@@ -1069,6 +1086,60 @@ class SpatialPCA(FullMethodBase):
                 self.label + f"_center{self.descriptor.centers[i]}" + f"_eigvecs.pt",
             )
 
+
+    def soap_avg_aml(self, soap, frame, spat_cutoff, sigma):
+        """
+        :param soap: soap vectors
+        :param frame: ase.Atoms object
+        :param spat_cutoff: spatial IVAC cutoff 
+        :param sigma: Gaussian width for averaging
+        
+        
+        :returns: the averaged soap vectors
+        """
+        pos = frame.positions #frame_iron.positions[:core_idx,:]
+        cell = frame.cell
+        nlist = vesin.NeighborList(cutoff=spat_cutoff, full_list=True)
+        i, j, S, d = nlist.compute(
+            points=pos,
+            box=cell, 
+            periodic=True,
+            quantities="ijSd"
+        )
+        sort_idx = np.lexsort((d, j, i))  # primary i, secondary j, tertiary d
+        i_sorted = i[sort_idx]
+        j_sorted = j[sort_idx]
+        d_sorted = d[sort_idx]
+        S_sorted = S[sort_idx]
+        mask = np.ones(len(i_sorted), dtype=bool)
+        mask[1:] = (i_sorted[1:] != i_sorted[:-1]) | (j_sorted[1:] != j_sorted[:-1])
+        i = i_sorted[mask]
+        j = j_sorted[mask]
+        d = d_sorted[mask]
+        S = S_sorted[mask]
+        
+        feats = np.zeros_like(soap)
+        self_weight = 1.0
+
+        for idx, atom_idx in enumerate(np.unique(i)):
+            mask_i = i == atom_idx 
+            j_neighbors = j[mask_i]
+            d_neighbors = d[mask_i]
+            S_neighbors = S[mask_i]
+            
+            w = np.exp(-d_neighbors**2 / (2*sigma**2))
+
+            #sel_samples = Labels(
+            #    names=["atom"],
+            #    values=torch.tensor(j_neighbors, dtype=torch.int64).unsqueeze(-1),
+            #)
+            #feats = self.descriptor_spatial.calculate([system], sel_samples)
+            
+            weighted_sum = (w[:, None] * soap[j_neighbors]).sum(axis=0)
+            h_i = (weighted_sum + self_weight * soap[idx]) / (self_weight + w.sum())
+            feats[idx] = h_i
+
+        return feats
 
 
 
@@ -1962,3 +2033,162 @@ class PCAnorm(FullMethodBase):
             )
 
        
+    
+
+class SpatialPCA_deprecated(FullMethodBase):
+
+    def __init__(self, descriptor, interval, sigma, ridge_alpha, root):
+        self.name = 'SpatialPCA'
+        super().__init__(descriptor, interval, lag=0, root=root, sigma=sigma, ridge_alpha=ridge_alpha, method=self.name)
+
+
+    def compute_(self, soap, scatter_mut, sum_mu_t, cov_t, nsmp, ntimesteps):
+        for atom_type_idx, atom_type in enumerate(self.atomsel_element):
+            #COV_intra_cluster, COV_inter_cluster = self.full_spatial_averaging(system, avg_soap, self.sigma)
+            mu_t = soap[atom_type].mean(axis=0)
+            scatter_mut[atom_type_idx] += np.einsum(
+                "a,b->ab",
+                mu_t,
+                mu_t,
+            )
+
+            sum_mu_t[atom_type_idx] += mu_t #sum over all same atoms
+
+            #cov_t[atom_type_idx] += np.einsum("ia,ib->ab", avg_soap[atom_type] - mu_t, avg_soap[atom_type] - mu_t)/len(atom_type) #sum over all same atoms (have already summed over all times before) 
+            cov_t[atom_type_idx] += COV_inter_cluster
+            cov_intra_t[atom_type_idx] += COV_intra_cluster
+            nsmp[atom_type_idx] += len(atom_type)
+            ntimesteps[atom_type_idx] += 1
+
+    def compute_COV(self, traj):
+        """
+        Compute time-averaged SOAP covariance matrices for each atomic species.
+
+        This method computes the temporal and ensemble covariance of SOAP 
+        descriptors for different atomic species over a molecular dynamics 
+        trajectory. It uses a Gaussian kernel to smooth SOAP vectors in time 
+        and separates intra-atomic (within-atom) and inter-atomic (between-atoms)
+        covariance contributions.
+
+        Parameters
+        ----------
+        traj : ase.io.Trajectory or list of ase.Atoms
+            Molecular dynamics trajectory containing atomic configurations 
+            for which the SOAP descriptors are computed.
+
+        Returns
+        -------
+        mean_mu_t : np.ndarray, shape (n_species, n_features)
+            Time-averaged mean SOAP vector for each atomic species.
+        mean_cov_t : np.ndarray, shape (n_species, n_features, n_features)
+            Mean covariance of SOAP descriptors across all timesteps and atoms 
+            of a given species.
+        cov_mu_t : np.ndarray, shape (n_species, n_features, n_features)
+            Temporal covariance of SOAP descriptor means (fluctuations in time).
+        """
+        systems = systems_to_torch(traj, dtype=torch.float64)
+        soap_block = self.descriptor.calculate(systems[:1])
+        first_soap =  soap_block  
+        self.atomsel_element = [[idx for idx, label in enumerate(self.descriptor.soap_block.samples.values.numpy()) if label[2] == atom_type] for atom_type in self.descriptor.centers]
+        if soap_block.shape[0] == 1:
+            self.atomsel_element = [[0] for atom_type in self.descriptor.centers]
+        buffer = np.zeros((first_soap.shape[0], self.interval, first_soap.shape[1]))
+        cov_t = np.zeros((len(self.atomsel_element), first_soap.shape[1], first_soap.shape[1],))
+        cov_intra_t = np.zeros((len(self.atomsel_element), first_soap.shape[1], first_soap.shape[1],))
+        sum_mu_t = np.zeros((len(self.atomsel_element),first_soap.shape[1],))
+        scatter_mut = np.zeros((len(self.atomsel_element),first_soap.shape[1], first_soap.shape[1],))
+        nsmp = np.zeros(len(self.atomsel_element))
+        delta=np.zeros(self.interval)
+        delta[self.interval//2]=1
+        kernel=gaussian_filter(delta,sigma=(self.interval-1)//(2*3)) # cutoff at 3 sigma, leaves 0.1%
+        ntimesteps = np.zeros(len(self.atomsel_element), dtype=int)
+
+        for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Computing SOAPs"):
+            new_soap_values = self.descriptor.calculate([system])
+            avg_soap_values = self.spatial_average_with_nl([system], new_soap_values)
+            if fidx >= self.interval:
+                roll_kernel = np.roll(kernel, fidx%self.interval)
+                # computes a contribution to the correlation function
+                # the buffer contains data from fidx-maxlag to fidx. add a forward ACF
+                avg_soap = np.einsum("j,ija->ia", roll_kernel, buffer) #smoothen
+                self.compute_()
+                for atom_type_idx, atom_type in enumerate(self.atomsel_element):
+                    
+                    #COV_intra_cluster, COV_inter_cluster = self.full_spatial_averaging(system, avg_soap, self.sigma)
+                    soapsum = avg_soap[atom_type].mean(axis=0)
+                    scatter_mut[atom_type_idx] += np.einsum(
+                        "a,b->ab",
+                        mu_t,
+                        mu_t,
+                    )
+
+                    sum_mu_t[atom_type_idx] += mu_t #sum over all same atoms
+
+                    #cov_t[atom_type_idx] += np.einsum("ia,ib->ab", avg_soap[atom_type] - mu_t, avg_soap[atom_type] - mu_t)/len(atom_type) #sum over all same atoms (have already summed over all times before) 
+                    cov_t[atom_type_idx] += COV_inter_cluster
+                    cov_intra_t[atom_type_idx] += COV_intra_cluster
+                    nsmp[atom_type_idx] += len(atom_type)
+                    ntimesteps[atom_type_idx] += 1
+
+            buffer[:,fidx%self.interval,:] = avg_soap_values
+
+        mean_cov_t = np.zeros((len(self.atomsel_element), new_soap_values.shape[1], new_soap_values.shape[1]))
+        mean_cov_intra_t = np.zeros((len(self.atomsel_element), new_soap_values.shape[1], new_soap_values.shape[1]))
+        cov_mu_t = np.zeros((len(self.atomsel_element), new_soap_values.shape[1], new_soap_values.shape[1]))
+        mean_mu_t = np.zeros((len(self.atomsel_element), first_soap.shape[1],))
+
+        # autocorrelation matrix - remove mean
+        for atom_type_idx, atom_type in enumerate(self.atomsel_element): 
+            mean_cov_t[atom_type_idx] = cov_t[atom_type_idx]/ntimesteps[atom_type_idx]
+            mean_cov_intra_t[atom_type_idx] = cov_intra_t[atom_type_idx]/ntimesteps[atom_type_idx]
+            # COV = 1/N ExxT - mumuT
+            mean_mu_t[atom_type_idx] = sum_mu_t[atom_type_idx]/ntimesteps[atom_type_idx]
+            # add temporal covariance
+            cov_mu_t[atom_type_idx] = scatter_mut[atom_type_idx]/ntimesteps[atom_type_idx] - np.einsum('i,j->ij', mean_mu_t[atom_type_idx], mean_mu_t[atom_type_idx])
+
+        #all_soap_values = eval_SOAP(systems, calculator, sel, atomsel).values.numpy()
+        #C_np = np.cov(all_soap_values, rowvar=False, bias=True)   # population covariance
+        #print(np.allclose(C_np, avgcc[0], atol=1e-8))
+
+        self.mean_mu_t = mean_mu_t
+        self.mean_cov_t = mean_cov_t
+        self.mean_cov_intra_t = mean_cov_intra_t
+        self.cov_mu_t = cov_mu_t
+
+        # inter vs intra
+        #return mean_mu_t, mean_cov_t, mean_cov_intra_t  #+ cov_mu_t
+        # intra vs inter
+        return mean_mu_t, mean_cov_intra_t, mean_cov_t  #+ cov_mu_t
+
+        # FULL
+        #return mean_mu_t, mean_cov_t + mean_cov_intra_t + cov_mu_t, [np.eye(c.shape[0]) for c in cov_mu_t]
+
+
+
+
+
+
+
+    def log_metrics(self):
+        """
+        Log metrics from the run, including the covariances.
+
+
+        Returns
+        -------
+        empty
+        """
+        metrics = np.array([[np.trace(mean_cov_intra), np.trace(mean_cov), np.trace(cov_mu)] 
+                    for mean_cov_intra, mean_cov, cov_mu in zip(self.mean_cov_intra_t, self.mean_cov_t, self.cov_mu_t)])
+        header = ["spatialCov_intra", "spatialCov_inter", "tempCov"]
+
+        # Make metrics a 2D row vector: shape (1, 2)
+        np.savetxt(
+            self.label + "_.csv",
+            metrics,
+            fmt="%.6f",
+            delimiter="\t",
+            header="\t".join(header),
+            comments=""
+        )
+

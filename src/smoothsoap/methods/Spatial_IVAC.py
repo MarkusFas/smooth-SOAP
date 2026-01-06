@@ -293,6 +293,7 @@ class SpatialIVACnorm(FullMethodBase):
         return mu, cov_spat, cov
 
 
+
     def log_metrics(self):
         """
         Log metrics from the run, including the covariances.

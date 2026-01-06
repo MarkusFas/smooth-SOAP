@@ -142,11 +142,11 @@ def plot_2pca_spatial_movie(X, label, sel_atoms, traj, interval=300):
 
 
 @mpltex.acs_decorator
-def plot_histogram(X, label, sel_atoms, traj):
+def plot_histogram(X, label, sel_atoms, traj , i_pca=0):
     fig, ax = plt.subplots(1,1, figsize=(12,6))
     positions = np.array([atoms.positions[sel_atoms, 2] for atoms in traj])
     T, N, P = X.shape
     data = X.reshape(-1, P)
-    ax.hist(data[:,0], bins=50, alpha=0.7)
+    ax.hist(data[:,i_pca], bins=50, alpha=0.7)
     plt.savefig(label + f'_histogram.png', dpi=200)
     plt.close()
