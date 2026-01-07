@@ -155,29 +155,32 @@ class FullMethodBase(ABC):
         kernel=gaussian_filter(delta,sigma=(self.interval-1)//(2)) # cutoff at 3 sigma, leaves 0.1%
         kernel /= kernel.sum() #kernel = delta
         self.ridge = {}
-
-
+        
         for idx, trafo in enumerate(self.transformations):
             self.ridge[idx] = Ridge(alpha=self.ridge_alpha, fit_intercept=False)
             avg_soap_proj = trafo.project(first_soap) 
             print('avg_soap_proj',avg_soap_proj.shape)
+            old_soap_values = first_soap
             soap_values=np.zeros((first_soap.shape[0],len(systems)-self.interval, first_soap.shape[1]))
             avg_soaps_projs=np.zeros((first_soap.shape[0],len(systems)-self.interval, avg_soap_proj.shape[-1]))
             for fidx, system in tqdm(enumerate(systems), total=len(systems), desc="Fit Ridge"):
                 new_soap_values = self.descriptor.calculate([system], selected_samples=self.descriptor.selected_samples)
-                buffer[:,fidx%self.interval,:] = new_soap_values
+                #TODO: make more efficient, need buffer?
                 if fidx >= self.interval:
                     roll_kernel = np.roll(kernel, fidx%self.interval)
+                    roll_delta = np.roll(delta, fidx%self.interval)
                     # computes a contribution to the correlation function
                     # the buffer contains data from fidx-maxlag to fidx. add a forward ACF
                     avg_soap = np.einsum("j,ija->ia", roll_kernel, buffer) #smoothen
-                    avg_soap = new_soap_values
+                    inst_soap = np.einsum("j,ija->ia", roll_delta, buffer) # instantaneous
+                    #avg_soap = old_soap_values
                     avg_soap_proj = trafo.project(avg_soap)
                     #print('projshape', avg_soap_proj.shape)
                     #print('nonprog.shape',new_soap_values.shape)
-                    soap_values[:,fidx-self.interval,:] = new_soap_values
+                    soap_values[:,fidx-self.interval,:] = inst_soap
                     avg_soaps_projs[:,fidx-self.interval,:] = avg_soap_proj
-                
+                buffer[:,fidx%self.interval,:] = new_soap_values
+                #old_soap_values = new_soap_values
             #soap_values=soap_values.reshape((soap_values.shape[0]*soap_values.shape[1],soap_values.shape[2]))
             #avg_soaps_projs=avg_soaps_projs.reshape((avg_soaps_projs[0]*avg_soaps_projs[1],avg_soaps_projs.shape[2]))
             if len(systems) == 1:
@@ -188,8 +191,6 @@ class FullMethodBase(ABC):
             avg_soaps_projs=avg_soaps_projs.reshape(avg_soaps_projs.shape[0]*avg_soaps_projs.shape[1],avg_soaps_projs.shape[2])
             #np.reshape(avg_soaps_projs.soap_values,(avg_soaps_projs.shape[0]*avg_soaps_projs.shape[1],avg_soaps_projs.shape[2]))
             #p.reshape(avg_soaps_projs,(avg_soaps_projs[0]*avg_soaps_projs[1],avg_soaps_projs.shape[2]))
-            print('soapvals',soap_values.shape)
-            print('avg_soaps_proj',avg_soaps_projs.shape)
             self.ridge[idx].fit(soap_values, avg_soaps_projs)
 
 
