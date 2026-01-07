@@ -82,8 +82,10 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
                 method.fit_ridge_nonincremental(trj_ridge)
                 print('Finished the Ridge fit')
                 #X_ridge = method.predict_ridge(trj[0], train_atoms)
+                print('Starting Ridge prediction ...')
                 X_ridge = method.predict_ridge(trj_predict, test_atoms)
                 X_ridge = [proj.transpose(1,0,2) for proj in X_ridge]
+                print('Finished Ridge prediction')
             
             print('Starting to predict ...')
             X = method.predict(trj_predict, test_atoms) ##centers N,T,P
