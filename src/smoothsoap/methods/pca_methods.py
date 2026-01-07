@@ -1592,16 +1592,16 @@ class CumulantPCA(FullMethodBase):
                 new_soap_values = None
                 if fidx >= self.interval:
                     roll_kernel = np.roll(kernel, fidx%self.interval)
+                    roll_delta = np.roll(delta, fidx%self.interval)
                     # computes a contribution to the correlation function
                     # the buffer contains data from fidx-maxlag to fidx. add a forward ACF
                     avg_soap = np.einsum("j,ija->ia", roll_kernel, buffer) #smoothen
                     avg_soap_proj = trafo.project(avg_soap)
                     #print('projshape', avg_soap_proj.shape)
                     #print('nonprog.shape',new_soap_values.shape)
-                    soap_values[:,fidx-self.interval,:] = cum_soap_values
+                    soap_values[:,fidx-self.interval,:] = np.einsum("j,ija->ia", roll_delta, buffer)
                     avg_soaps_projs[:,fidx-self.interval,:] = avg_soap_proj
                 buffer[:,fidx%self.interval,:] = cum_soap_values
-
 
             if len(systems) == 1:
                 soap_values = first_soap[:,None,:]
