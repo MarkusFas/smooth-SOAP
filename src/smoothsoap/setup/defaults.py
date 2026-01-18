@@ -44,6 +44,7 @@ DEFAULT_PARAMS = {
     "model_save": False,
     "model_proj_dims": [0],
     "i_pca": 0,
+    "log": False,
     "classify": {
         "request": False,
         "switch_index": None,

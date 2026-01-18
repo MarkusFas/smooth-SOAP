@@ -8,6 +8,7 @@ from pathlib import Path
 from smoothsoap.descriptors.PETMAD import PETMAD_descriptor
 from smoothsoap.descriptors.SOAP import SOAP_descriptor_special
 from smoothsoap.descriptors.model_soap import SOAP_CV, CumulantSOAP_CV
+from smoothsoap.descriptors.model_soap_distinct import SOAP_CV_distinct
 from smoothsoap.methods import (
     PCA, IVAC, TICA, TILDA, TempPCA, 
     PCAfull, PCAtest, LDA, SpatialPCA, 
@@ -236,6 +237,16 @@ def setup_simulation(**kwargs):
         descriptor_id = f"{SOAP_cutoff}{SOAP_max_angular}{SOAP_max_radial}"
         descriptor = PETMAD_descriptor(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors)
    
+    elif descriptor_name == 'SOAP_distinct':
+        SOAP_kwargs = check_SOAP_inputs(trajs, **kwargs["SOAP_params"])
+        centers = SOAP_kwargs.get('centers')
+        neighbors = SOAP_kwargs.get('neighbors')
+        SOAP_cutoff = SOAP_kwargs.get('cutoff')
+        SOAP_max_angular = SOAP_kwargs.get('max_angular')
+        SOAP_max_radial = SOAP_kwargs.get('max_radial')
+        descriptor_id = f"{SOAP_cutoff}{SOAP_max_angular}{SOAP_max_radial}"
+        descriptor = SOAP_CV_distinct(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors)
+    
     else:
         raise NotImplementedError(f"{descriptor} has not been implemented yet.")
     
@@ -318,11 +329,9 @@ def setup_simulation(**kwargs):
                                     method_obj = CumulantIVAC(descriptor, interval, max_lag, min_lag, lag_step, ridge_alpha, n_cumulants, run_dir)
                                 elif method.upper() == 'SPATIALIVAC':
                                     n_cumulants = 1
-                                    descriptor = CumulantSOAP_CV(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors, spatial_cutoff)
                                     method_obj = SpatialIVAC(descriptor, interval, ridge_alpha, spatial_cutoff, sigma, run_dir)
                                 elif method.upper() == 'SPATIALIVACNORM':
                                     n_cumulants = 1
-                                    descriptor = CumulantSOAP_CV(SOAP_cutoff, SOAP_max_angular, SOAP_max_radial, centers, neighbors, spatial_cutoff)
                                     method_obj = SpatialIVACnorm(descriptor, interval, ridge_alpha, spatial_cutoff, run_dir)
                                 else:
                                     raise NotImplementedError(f"Method must be one of {implemented_opt}, got {method}")
