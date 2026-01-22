@@ -26,16 +26,18 @@ def plot_2pca(X, label): #T,N,P
 
 @mpltex.acs_decorator
 def plot_2pca_atoms(X, label, sel_atoms):
-    fig, ax = plt.subplots(1,1, figsize=(12,6))
+    fig, ax = plt.subplots(1,1, figsize=(3,3))
     for i, trj in enumerate(X.transpose(1,0,2)): # shape N, T, P
-        color = 'green' if sel_atoms[i] > 256*3//2 else 'orange'
         sc = ax.scatter(
             trj[:,0], 
             trj[:,1], #first PCA component
-            color=color, 
-            alpha=0.2,
-            s=2.5,
+            color='black',
+            alpha=0.1,
+            s=0.5,
         )
+        ax.set_xlabel('PC1')
+        ax.set_ylabel('PC2')
+    plt.tight_layout()  
     plt.savefig(label + f'_projection_atoms.png', dpi=200)
     plt.close()
 
@@ -147,6 +149,7 @@ def plot_histogram(X, label, sel_atoms, traj , i_pca=0):
     positions = np.array([atoms.positions[sel_atoms, 2] for atoms in traj])
     T, N, P = X.shape
     data = X.reshape(-1, P)
-    ax.hist(data[:,i_pca], bins=50, alpha=0.7)
+    ax.hist(data[:,i_pca], bins=100, alpha=0.7)
     plt.savefig(label + f'_histogram.png', dpi=200)
+    #plt.savefig(label + f'_histogram.png', dpi=200)
     plt.close()

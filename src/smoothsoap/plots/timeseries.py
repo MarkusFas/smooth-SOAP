@@ -49,6 +49,23 @@ def plot_projection_atoms(X_values, PCA_idx, label, intervals):
         plt.close()
 
 @mpltex.acs_decorator
+def plot_projection_CV(X_values, label, i_pca):
+    print('plot_compare_atoms_PCA')
+    # X is T,N,D
+    # plot different models for time averageing
+    print(X_values.shape)
+    ts, n_particles, ndims = X_values.shape
+    fig, ax = plt.subplots(1,1, figsize=(4, 2.33))
+    ax.set_xlabel('time [ns]')
+    ax.set_ylabel(f'CV')
+    data = X_values.transpose(2,1,0)[i_pca,...]
+    for trj in data.reshape(n_particles, -1):
+        ax.plot(np.arange(len(trj))*0.005, trj, color='C0')
+        plt.tight_layout()
+        plt.savefig(label+f'_CV_timeseries.png', dpi=200)
+        plt.close()
+
+@mpltex.acs_decorator
 def plot_projection_atoms_models(X_values, PCA_idx, label, intervals):
     print('plot_compare_timeave_PCA')
     # X is T,N,D

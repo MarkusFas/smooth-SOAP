@@ -65,7 +65,9 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
             # train our method by specifying the selected atoms
             method.train(trj, train_atoms)
 
-            method.log_metrics()
+            # for saving eigvecs, eigvals, mu etc for analysis
+            if kwargs['log']:
+                method.log_metrics()
 
 
             # get predictions with the new representation

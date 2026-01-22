@@ -2,7 +2,7 @@ import numpy as np
 import chemiscope
 
 from smoothsoap.plots.onion import plot_onion, plot_snapshot
-from smoothsoap.plots.timeseries import plot_projection_atoms, plot_projection_atoms_models
+from smoothsoap.plots.timeseries import plot_projection_atoms, plot_projection_atoms_models, plot_projection_CV
 from smoothsoap.plots.histograms import plot_2pca, plot_2pca_atoms, plot_2pca_height, plot_histogram, plot_2pca_spatial, plot_2pca_spatial_movie
 
 def post_processing(X, trj_predict, test_atoms, method, label, **kwargs):
@@ -35,6 +35,11 @@ def post_processing(X, trj_predict, test_atoms, method, label, **kwargs):
         for i, proj in enumerate(X):
             plot_2pca_atoms(proj, label + f'_{i}', test_atoms)
         print(f'Plotted scatterplot of {method.name} atoms labels')
+    
+    if "CV" in plots:
+        for i, proj in enumerate(X):
+            plot_projection_CV(proj, label + f'_{i}', i_pca=i_pca)
+        print(f'Plotted projected CV timeseries for {method.name}')
     
     if "pca_height" in plots:
         for i, proj in enumerate(X):

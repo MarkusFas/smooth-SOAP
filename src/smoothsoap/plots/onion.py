@@ -1,15 +1,17 @@
+from matplotlib.gridspec import GridSpec
 from tropea_clustering import onion_multi, onion_uni, helpers
 import numpy as np
 import matplotlib.pyplot as plt
 import numpy as np
 from ase import Atoms
 import ase.io
+import mpltex
 
-
+@mpltex.acs_decorator
 def plot_onion(X, atoms, test_atoms, label, delta_t=None, i_pca=0):
     #try:
     n_seq, n_particles, n_dim = X.shape
-    for delta_t in [2, n_seq//8, n_seq//4, n_seq//2, n_seq]:
+    for delta_t in list(set(np.logspace(np.log10(2), np.log10(n_seq), 10, dtype=int))):
         if delta_t == 1:
             continue
         data = X.transpose(2,1,0)[i_pca,...]
@@ -30,19 +32,27 @@ def plot_onion(X, atoms, test_atoms, label, delta_t=None, i_pca=0):
             for i, cls in enumerate(classes)
         }
         colors = np.array([class_to_color[int(c)] for c in classes])
-        fig, ax = plt.subplots(1,1,figsize=(4,3))
+        fig = plt.figure(figsize=(6,3.5))
+        gs = GridSpec(1, 2, width_ratios=[4,0.8], wspace=0.05)
+
+        # main timeseries plot
+        ax0 = plt.subplot(gs[0])
+    
+        # vertical histogram on the right
+        ax1 = plt.subplot(gs[1], sharey=ax0)
         N, T = data.shape
         data = data.reshape(-1)
-        counts, bin_edges = np.histogram(data, bins=50)
+        counts, bin_edges = np.histogram(data, bins=100)
         bin_widths = np.diff(bin_edges)[0]
         norm = (counts.sum() * bin_widths)
         pdf = counts / norm
-        ax.bar(bin_edges[:-1], pdf, width=bin_widths, align="edge", alpha=0.5)
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+        ax1.barh(bin_centers, pdf, height=bin_widths, align="center", alpha=0.5)
         x = np.linspace(np.min(data), np.max(data), 200)
         tot_perc = np.sum([state.perc for state in state_list])
         norm_factor = np.sum([state.area for state in state_list])
-        tot_area = np.sum(state.area for state in state_list)
-        tot_perc = np.sum(state.perc for state in state_list)
+        tot_area = np.sum([state.area for state in state_list])
+        tot_perc = np.sum([state.perc for state in state_list])
         tot_area *= tot_perc
         proper_classes = classes[classes != -1]
         for i, class_ in enumerate(proper_classes):
@@ -53,21 +63,31 @@ def plot_onion(X, atoms, test_atoms, label, delta_t=None, i_pca=0):
             y = np.exp(-0.5*((x - mu)**2 / var))/np.sqrt(2*np.pi*var) * area
             scale = state.perc #counts[i]/np.sum(counts)
             color = class_to_color[int(class_)]
-            ax.plot(x, y, c=color, label=f'class {class_} {scale*100:.2f}%')
+            ax1.plot(y, x, c=color, label=fr'{class_}: {scale*100:.1f} $\%$')
 
             #add histogram
         #ax.hist(data[0], bins=50, alpha=0.2, color='red', density=True)
-        ax.set_xlabel('PCA 1')
-        ax.set_ylabel('Density')
-        ax.legend()
+        #ax1.set_xlabel('PCA 1')
+        ax1.set_xlabel('PDF')
+        ax1.legend()
+
+        ax0.set_xlabel('time [ns]')
+        ax0.set_ylabel(f'CV')
+        data = X.transpose(2,1,0)[i_pca,...]
+        mean = np.mean(data, axis=1)
+        std = np.std(data, axis=1)
+        #ax0.plot(mean, alpha=1.0, color='C1')
+        #ax0.fill_between(np.arange(len(mean)), mean-std, mean+std, alpha=0.25, color='C0')
+        for trj in data.reshape(n_particles, -1):
+            ax0.plot(np.arange(len(trj))*0.01, trj, alpha=0.05, color='C0')
+        plt.setp(ax1.get_yticklabels(), visible=False)
         plt.tight_layout()
-        plt.savefig(label + f'_onion_states_delta_{delta_t}.png', dpi=300)
+        plt.savefig(label + f'_onion_states_delta_{delta_t}.png', dpi=200)
         plt.close()
         print(f"Saved onion states plot with delta_t={delta_t}")
         plot_snapshot_onion(labels.reshape(n_particles,-1)[:,0], atoms, test_atoms, label, delta_t, class_to_color)
     #except Exception as e:
     #print(f"An error occurred in plot_onion: {e}")
-
 
 
 def plot_snapshot_onion(labels, atoms, test_atoms, label, delta_t, class_to_color=None):
