@@ -21,7 +21,7 @@ class SpatialIVAC(FullMethodBase):
         self.name = 'SpatialIVAC'
         self.spatial_cutoff = spatial_cutoff
         super().__init__(descriptor, interval, lag=0, root=root, sigma=0, ridge_alpha=ridge_alpha, method=self.name)
-
+        self.label = self.label + f'cut_{self.spatial_cutoff}'
 
     def compute_(self, soap, sum_soaps, cov_t, cov_t_cum, nsmp, ntimesteps):   
         for atom_type_idx, atom_type in enumerate(self.atomsel_element):
@@ -165,6 +165,7 @@ class SpatialIVACnorm(FullMethodBase):
         self.name = 'SpatialIVACnorm'
         self.spatial_cutoff = spatial_cutoff
         super().__init__(descriptor, interval, lag=0, root=root, sigma=0, ridge_alpha=ridge_alpha, method=self.name)
+        self.label = self.label + f'cut_{self.spatial_cutoff}'
 
 
 
