@@ -139,7 +139,7 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
                                     'train_selected_atoms', 'test_selected_atoms', 'input_params', 
                                     'output_params', 'descriptor', 'SOAP_params', 'ridge', 
                                     'ridge_save', 'model_proj_dims', 'i_pca', 'classify', 'base_path']
-                    run_specific={'method':method.name, 'inverval':method.interval,
+                    run_specific={'method':method.name, 'interval':method.interval,
                                   'descriptor': method.descriptor 
                                   }
                     savekwargs={key: kwargs[key] for key in keys_to_save}
