@@ -9,6 +9,7 @@ from scipy.ndimage import gaussian_filter
 from scipy.stats import moment
 import ase.neighborlist
 from vesin import ase_neighbor_list
+import vesin
 from memory_profiler import profile
 
 
@@ -48,7 +49,8 @@ class PETMAD_descriptor():
             selected_atoms=self.selected_samples,
         )
 
-    def calculate(self, structures, selected_samples=None):
+    def calculate(self, systems, selected_samples=None):
+
         if selected_samples is None:
             selected_samples = self.selected_samples
         self.options = ModelEvaluationOptions(
@@ -58,14 +60,24 @@ class PETMAD_descriptor():
             }, # check features, check 'mtt::aux::energy_last_layer_features'
             selected_atoms=selected_samples,
         )
-        systems = systems_to_torch(structures, dtype=torch.float32)
+        #systems = systems_to_torch(structures, dtype=torch.float32)
+        systems_new = []
         for i, system in enumerate(systems):
-            atoms = structures[i]
-            i, j, S, D = ase_neighbor_list(quantities="ijSD", a=atoms, cutoff=4.5)
+            system = system.to(torch.float32)
+            #atoms = structures[i]
+            nlist = vesin.NeighborList(cutoff=4.5, full_list=True)
+            i, j, S, D = nlist.compute(
+                points=system.positions,
+                box=system.cell, 
+                periodic=True,
+                quantities="ijSD"
+            )
+            #i, j, S, D = ase_neighbor_list(quantities="ijSD", a=atoms, cutoff=4.5)
             i = torch.from_numpy(i.astype(int))
             j = torch.from_numpy(j.astype(int))
             neighbor_indices = torch.stack([i, j], dim=1)
             neighbor_shifts = torch.from_numpy(S.astype(int))
+
             sample_values = torch.hstack([neighbor_indices, neighbor_shifts])
             samples = Labels(
                 names=[
@@ -85,14 +97,18 @@ class PETMAD_descriptor():
                 properties=Labels.range("distance", 1),
             ).to(torch.float32)
             system.add_neighbor_list(self.nl_options, neighbors)
+            systems_new.append(system.to(torch.float32))
 
-        model = self.petmad(systems, 
+        
+        model = self.petmad(systems_new, 
             options=self.options,
             check_consistency=True,
         )
         self.soap_block = model['mtt::aux::energy_last_layer_features'].block()
         features = self.soap_block.values.numpy()
         return features
+
+
 
 
     def compute_cumulants(self, X, n_cumulants):

@@ -115,7 +115,7 @@ class SOAP_CV(torch.nn.Module):
 
     def set_atom_types(self, trj):
         types=[i.number for j in trj for w in j for i in w]
-        self.atomic_types= sorted(set(types), key=types.index) #[torch.tensor([i for i in centers]+[j for j in neighbors if j not in centers ], dtype=torch.int32)]
+        self.atomic_types = sorted(set(types), key=types.index) #[torch.tensor([i for i in centers]+[j for j in neighbors if j not in centers ], dtype=torch.int32)]
 
     def set_projection_dims(self, dims):
         self.proj_dims = dims
@@ -132,7 +132,7 @@ class SOAP_CV(torch.nn.Module):
             interaction_range=10.0,
             supported_devices=["cpu"],
             length_unit="A",
-            atomic_types=self.neighbors,
+            atomic_types=self.atomic_types,
             dtype="float64",
         )
         
@@ -312,7 +312,7 @@ class CumulantSOAP_CV(torch.nn.Module):
             interaction_range=10.0,
             supported_devices=["cpu"],
             length_unit="A",
-            atomic_types=self.neighbors,
+            atomic_types=self.atomic_types,
             dtype="float64",
         )
         
