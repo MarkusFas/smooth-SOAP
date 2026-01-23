@@ -8,7 +8,7 @@ from pathlib import Path
 from smoothsoap.descriptors.PETMAD import PETMAD_descriptor
 from smoothsoap.descriptors.SOAP import SOAP_descriptor_special
 from smoothsoap.descriptors.model_soap import SOAP_CV, CumulantSOAP_CV
-from smoothsoap.descriptors.model_soap_distinct import SOAP_CV_distinct
+#from smoothsoap.descriptors.model_soap_distinct import SOAP_CV_distinct
 from smoothsoap.methods import (
     PCA, IVAC, TICA, TILDA, TempPCA, 
     PCAfull, PCAtest, LDA, SpatialPCA, 

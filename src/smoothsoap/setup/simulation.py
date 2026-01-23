@@ -132,10 +132,32 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
                     X_fromavg = [np.mean(x, axis=1)[:, np.newaxis, :] for x in X_fromavg]
                     post_processing(X_fromavg, trj_predict, test_atoms, method, newlabel + f'_fromavg', **kwargs)
 
-
             if kwargs["model_save"]:
                 for i, trans in enumerate(method.transformations):
                     method.descriptor.set_atom_types(trj)
+                    keys_to_save = ['system', 'version', 'specifier',
+                                    'train_selected_atoms', 'test_selected_atoms', 'input_params', 
+                                    'output_params', 'descriptor', 'SOAP_params', 'ridge', 
+                                    'ridge_save', 'model_proj_dims', 'i_pca', 'classify', 'base_path']
+                    run_specific={'method':method.name, 'inverval':method.interval, 'lag': method.lag,
+                                  'descriptor': method.descriptor, 'Transformations':method.transformations, 
+                                  }
+                    savekwargs={key: kwargs[key] for key in keys_to_save}
+                    method.descriptor.update_hypers(savekwargs)
+                    method.descriptor.update_hypers(run_specific)
+
+                    if hasattr(method, 'spatial_cutoff'):
+                        method.descriptor.update_hypers({'spatial_cutoff':method.spatial_cutoff})
+                    if hasattr(method, 'sigma'):
+                        method.descriptor.update_hypers({'sigma':method.sigma})
+                    if hasattr(method, 'n_cumulants'):
+                        method.descriptor.update_hypers({'n_cumulants':method.cumulants})
+                    if hasattr(method, 'lag'):
+                        method.descriptor.update_hypers({'lag':method.lag, 'max_lag':kwargs['max_lag'], 'min_lag':kwargs['min_lag'],'lag_step':kwargs['lag_step']})
+                    if kwargs['ridge']==True:
+                        method.descriptor.update_hypers({'ridge_alpha':method.ridge_alpha})
+
+
                     if kwargs["ridge"] and kwargs["ridge_save"]:
                         method.descriptor.set_projection_matrix(method.ridge[i].coef_.T)
                     else:

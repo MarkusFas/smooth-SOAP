@@ -51,8 +51,7 @@ class SOAP_CV(torch.nn.Module):
         else:
             self.projection_matrix=None
 
-        self.hypers={'cutoff':cutoff, 'max_angular': max_angular, 'centers':centers, 'neighbors':neighbors}
-        print('setting hypers in model', self.hypers)
+        self.hypers={}
 
     def calculate(self, systems, selected_samples=None):
         if selected_samples is None:
@@ -126,6 +125,9 @@ class SOAP_CV(torch.nn.Module):
     def set_projection_mu(self, mu):
         self.mu = torch.tensor(mu, dtype=torch.float64)
 
+    def update_hypers(self, hypers): #hypers has to be dict
+        self.hypers.update({key: str(val) for key, val in hypers.items()})
+
     def set_projection_matrix(self,matrix):
         self.projection_matrix=torch.tensor(matrix.copy())
 
@@ -139,7 +141,8 @@ class SOAP_CV(torch.nn.Module):
             dtype="float64",
         )
         
-        metadata = ModelMetadata(name="Projection to ICA models", authors='SmoothSOAP', description='testingthis'+self.hypers['centers'])
+        metadata = ModelMetadata(name="Projection to ICA model", authors=['SmoothSOAP'], description='Hyperparameters in extra', extra=self.hypers)
+        print(metadata)
         model = AtomisticModel(self, metadata, capabilities)
         model.save("{}/{}.pt".format(path,name), collect_extensions=f"{path}/extensions")
 
