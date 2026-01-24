@@ -1,8 +1,8 @@
 
 # systems/icewater/test.yaml
 
-system: chignolin-5psdump-REMD
-specifier: run_ctrltrj_nowater
+system: chignolin-450K
+specifier: run0
 interval: 
   - 1
 
@@ -34,22 +34,23 @@ methods:
 input_params:
   fname: 
     #- /Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/chignolin/0_whole_centered.pdb
-    - /Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/chignolin/ctrl_270/metad_nowater.pdb
-
+    #- /Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/chignolin/ctrl_270/metad_nowater.pdb
+    - /Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/chignolin/ctrl_270/restart/centered.pdb
     #250350- /Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/interfaces/low_freq/positions.lammpstrj
     #- /Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/icemeltinterface/TIP4P/positions.extxyz
   indices: 
-    - ':2500:5'
+    - '90000::10' #10ps dump (1fs)
 
 output_params:
   fname: 
     #- /Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/chignolin/0_whole_centered.pdb
-    - /Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/chignolin/ctrl_270/metad_nowater.pdb
+    #- /Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/chignolin/ctrl_270/metad_nowater.pdb
+    - /Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/chignolin/ctrl_270/restart/centered.pdb
 
     #250350- /Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/interfaces/low_freq/positions.lammpstrj
     #- /Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/icemeltinterface/TIP4P/positions.extxyz
   indices: 
-    - ':2500:5'
+    - '90000::10' #10ps dump (1fs)
 
 #output_params:
 #  fname: 
