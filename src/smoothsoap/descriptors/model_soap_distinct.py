@@ -51,6 +51,8 @@ class SOAP_CV_distinct(torch.nn.Module):
         else:
             self.projection_matrix=None
 
+        self.hypers={}
+
     def calculate(self, systems, selected_samples=None):
         if selected_samples is None:
             selected_samples = self.selected_samples
@@ -126,6 +128,9 @@ class SOAP_CV_distinct(torch.nn.Module):
 
     def set_projection_matrix(self,matrix):
         self.projection_matrix=torch.tensor(matrix.copy())
+
+    def update_hypers(self, hypers): #hypers has to be dict
+        self.hypers.update({key: str(val) for key, val in hypers.items()})
 
     def save_model(self, path='.', name='soap_model'):
         capabilities = ModelCapabilities(
