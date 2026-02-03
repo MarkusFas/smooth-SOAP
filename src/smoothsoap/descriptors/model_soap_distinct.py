@@ -83,7 +83,7 @@ class SOAP_CV_distinct(torch.nn.Module):
 
         if len(systems[0]) == 0:
             # PLUMED is trying to determine the size of the output
-            projected = torch.zeros((0,1), dtype=torch.float64)
+            projected = torch.zeros((0,len(self.proj_dims)), dtype=torch.float64)
             samples = Labels(["system"], torch.zeros((0, 1), dtype=torch.int32))
         else:
             soap = self.calculator(systems, selected_samples=selected_atoms, selected_keys=self.selected_keys)

@@ -100,8 +100,6 @@ class SOAP_CV(torch.nn.Module):
             samples = Labels(["system"], torch.zeros((1, 1), dtype=torch.int32))
             projected = torch.mean(projected, dim=0)
             projected = projected.unsqueeze(0)
-            if selected_atoms is not None:
-                print("selected_atoms in model:", selected_atoms.values.shape)
 
         block = TensorBlock(
             values=projected,
