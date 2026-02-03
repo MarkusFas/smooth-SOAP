@@ -77,13 +77,13 @@ class SOAP_CV(torch.nn.Module):
         if "features" not in outputs:
             return {}
 
-        if not outputs["features"].per_atom:
-            raise ValueError("per_atom=False is not supported")
+        if outputs["features"].per_atom:
+            raise ValueError("per_atom=True is not supported")
 
         if len(systems[0]) == 0:
             # PLUMED is trying to determine the size of the output
             projected = torch.zeros((0,1), dtype=torch.float64)
-            samples = Labels(["system", "atom"], torch.zeros((0, 2), dtype=torch.int32))
+            samples = Labels(["system"], torch.zeros((0, 1), dtype=torch.int32))
         else:
             soap = self.calculator(systems, selected_samples=selected_atoms, selected_keys=self.selected_keys)
             soap = soap.keys_to_samples("center_type")
@@ -94,6 +94,14 @@ class SOAP_CV(torch.nn.Module):
             projected = torch.einsum('ij,jk->ik',(soap_block.values - self.mu), self.projection_matrix[:,self.proj_dims])#, dtype=torch.float64)
 
             samples = soap_block.samples.remove("center_type")
+            samples = Labels(["system"], torch.zeros((1, 1), dtype=torch.int32))
+            projected = torch.mean(projected, dim=0)
+            projected = projected.unsqueeze(0)
+            print("Projected shape:", projected.shape)
+            print("samples shape:", samples.values.shape)
+            print(self.proj_dims)
+            if selected_atoms is not None:
+                print("selected_atoms in model:", selected_atoms.values.shape)
 
         block = TensorBlock(
             values=projected,
@@ -133,7 +141,7 @@ class SOAP_CV(torch.nn.Module):
 
     def save_model(self, path='.', name='soap_model'):
         capabilities = ModelCapabilities(
-            outputs={"features": ModelOutput(per_atom=True)},
+            outputs={"features": ModelOutput(per_atom=False)},
             interaction_range=10.0,
             supported_devices=["cpu"],
             length_unit="A",
