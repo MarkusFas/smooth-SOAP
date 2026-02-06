@@ -83,7 +83,9 @@ class SOAP_CV(torch.nn.Module):
         if len(systems[0]) == 0:
             # PLUMED is trying to determine the size of the output
             projected = torch.zeros((0,len(self.proj_dims)), dtype=torch.float64)
+            projected_mean = torch.zeros((0,len(self.proj_dims)), dtype=torch.float64)
             samples = Labels(["system"], torch.zeros((0, 1), dtype=torch.int32))
+            samples_per_atom = Labels(["system", "atom"], torch.zeros((0,2), dtype=torch.int32))
         else:
             soap = self.calculator(systems, selected_samples=selected_atoms, selected_keys=self.selected_keys)
             soap = soap.keys_to_samples("center_type")
@@ -93,13 +95,27 @@ class SOAP_CV(torch.nn.Module):
             
             projected = torch.einsum('ij,jk->ik',(soap_block.values - self.mu), self.projection_matrix[:,self.proj_dims])#, dtype=torch.float64)
 
-            samples = soap_block.samples.remove("center_type")
+            samples_per_atom = soap_block.samples.remove("center_type")
             samples = Labels(["system"], torch.zeros((1, 1), dtype=torch.int32))
-            projected = torch.mean(projected, dim=0)
-            projected = projected.unsqueeze(0)
+            
+            projected_mean = torch.mean(projected, dim=0)
+            projected_mean = projected_mean.unsqueeze(0)
+
+        block_per_atom = TensorBlock(
+            values=projected,
+            samples=samples_per_atom,
+            components=[],
+            #properties=Labels("soap_pca", torch.tensor([[0]])),
+            #properties=Labels("soap_pca", torch.tensor([[0], [1]])),
+            properties=Labels("soap_pca", torch.tensor(self.proj_dims, dtype=torch.int).unsqueeze(-1)),
+        )
+        cv_per_atom = TensorMap(
+            keys=Labels("_", torch.tensor([[0]])),
+            blocks=[block_per_atom],
+        )
 
         block = TensorBlock(
-            values=projected,
+            values=projected_mean,
             samples=samples,
             components=[],
             #properties=Labels("soap_pca", torch.tensor([[0]])),
@@ -110,12 +126,12 @@ class SOAP_CV(torch.nn.Module):
             keys=Labels("_", torch.tensor([[0]])),
             blocks=[block],
         )
-        return {"features": cv}#, "soaps": soap }
+        return {"features": cv, "features/per_atom": cv_per_atom}#, "soaps": soap }
     
     def set_samples(self, selected_atoms):
         self.selected_samples = Labels(
             names=["atom"],
-            values=torch.tensor(selected_atoms, dtype=torch.int64).unsqueeze(-1),
+            values=torch.tensor(selected_atoms, dtype=torch.int32).unsqueeze(-1),
         )
 
     def set_atom_types(self, trj):
@@ -136,7 +152,8 @@ class SOAP_CV(torch.nn.Module):
 
     def save_model(self, path='.', name='soap_model'):
         capabilities = ModelCapabilities(
-            outputs={"features": ModelOutput(per_atom=False)},
+            outputs={"features": ModelOutput(per_atom=False),
+                "features/per_atom": ModelOutput(per_atom=True)},
             interaction_range=10.0,
             supported_devices=["cpu"],
             length_unit="A",
@@ -299,7 +316,7 @@ class CumulantSOAP_CV(torch.nn.Module):
     def set_samples(self, selected_atoms):
         self.selected_samples = Labels(
             names=["atom"],
-            values=torch.tensor(selected_atoms, dtype=torch.int64).unsqueeze(-1),
+            values=torch.tensor(selected_atoms, dtype=torch.int32).unsqueeze(-1),
         )
 
     def set_atom_types(self, trj):
@@ -322,7 +339,7 @@ class CumulantSOAP_CV(torch.nn.Module):
             supported_devices=["cpu"],
             length_unit="A",
             atomic_types=self.atomic_types,
-            dtype="float64",
+            dtype="float32",
         )
         
         metadata = ModelMetadata(name="Collective Variable test")
