@@ -15,6 +15,8 @@ from metatomic.torch import (
 )
 from featomic.torch import SoapPowerSpectrum
 import argparse
+from pathlib import Path
+
 
 class SOAP_CV_distinct(torch.nn.Module):
     def __init__(self, model, zmin, zmax):
@@ -42,18 +44,16 @@ class SOAP_CV_distinct(torch.nn.Module):
         mask = (pos[:, 2] > self.zmin) & (pos[:, 2] < self.zmax)
         #dtype = selected_atoms.values.dtype
 
-        print('pos', pos.shape)
-        print('selatoms', selected_atoms.values.shape)
-        print('mask', mask.shape)
-        selected_atoms_new = Labels(
+        newselected_atoms = Labels(
             names=selected_atoms.names,
             values=selected_atoms.values[mask],
         )
-        print('newselatoms', selected_atoms_new.values.shape)
+        print('newselatoms', newselected_atoms.values.shape)
+        self.selected_atoms = newselected_atoms
         eval_options = ModelEvaluationOptions(
             length_unit='',
             outputs=outputs,
-            selected_atoms=selected_atoms_new,
+            selected_atoms=self.selected_atoms,
         )
         return self.model(systems, eval_options, check_consistency=True) #, "soaps": soap }
 
@@ -62,6 +62,7 @@ class SOAP_CV_distinct(torch.nn.Module):
         capabilities = self.model.capabilities()
         metadata = self.model.metadata()
         wrapper = AtomisticModel(self, metadata, capabilities)
+        print("saving to {}/{}.pt".format(path, name))
         wrapper.save("{}/{}.pt".format(path, name), collect_extensions=f"{path}/extensions")
 
 if __name__ == "__main__":
@@ -71,15 +72,18 @@ if __name__ == "__main__":
     parser.add_argument('--zmin', type=float, default=-np.inf, help='minimum z-coordinate')
     parser.add_argument('--zmax', type=float, default=np.inf, help='maximum z-coordinate')
 
-    model_path = parser.parse_args().model_path
+    model_path = Path(parser.parse_args().model_path)
     zmin = parser.parse_args().zmin
     zmax = parser.parse_args().zmax
+    model = load_atomistic_model(str(model_path), extensions_directory=f"{model_path.parent / 'extensions'}")
+    print(f"{model_path.parent / 'extensions'}")
+    
 
-    model = load_atomistic_model(model_path)
     wrapper = SOAP_CV_distinct(model, zmin, zmax)
     wrapper.eval()
+    print("saving wrapper ...")
     wrapper.save_model(path='.', name=f'soap_wrapper_zmin{zmin}_zmax{zmax}')
-
+    exit()
     import vesin
     from ase.io import read, write
     #structures = read('/Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/icemeltinterface/nobias/positions.lammpstrj', index=':')
