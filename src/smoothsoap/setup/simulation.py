@@ -237,24 +237,24 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
             print('selection',atomtypes, selected_atoms) 
             opts = ModelEvaluationOptions(
                     length_unit="A",
-                    outputs={"features": ModelOutput(quantity="", per_atom=True)},
+                    outputs={"features": ModelOutput(quantity="", per_atom=False)}, #True
                     selected_atoms=selected_atoms,
                 )
             
             X=[]
             projected=[]
+            #print(systems)
             for system in systems:
-                cv=model.forward(system, options=opts, check_consistency=False)
+                #print(system)
+                cv=model.forward([system], options=opts, check_consistency=False)
             #print('cvshaaape',cv['features'][0].values.shape)
             #print( len(systems), int(cv['features'][0].values.shape[0]/len(systems)), cv['features'][0].values.shape[-1])
                 Xs=cv['features'][0].values
-                print(Xs.shape) 
-                Xs=Xs.reshape((len(systems[i]),int(cv[0]['features'][0].values.shape[0]/len(systems)),cv[0]['features'][0].values.shape[-1]))
-                print(Xs.shape) 
+                #print(Xs.shape) 
                 projected.append(Xs)
             X.append(np.stack(projected, axis=0).transpose(1, 0, 2))
 
-            print('reshaped',len(X),X[0].shape)
+            #print('reshaped',len(X),X[0].shape)
             trj_predict = list(chain(*trj_test))
             post_processing(X, trj_predict, test_atoms, loadedargs['method'], loadedargs['label'], loadedargs['interval'], **kwargs)
 
