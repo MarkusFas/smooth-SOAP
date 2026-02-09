@@ -26,7 +26,7 @@ def plot_2pca(X, label): #T,N,P
 
 @mpltex.acs_decorator
 def plot_2pca_atoms(X, label, sel_atoms):
-    fig, ax = plt.subplots(1,1, figsize=(3,3))
+    fig, ax = plt.subplots(1,1, figsize=(6,6))
     for i, trj in enumerate(X.transpose(1,0,2)): # shape N, T, P
         sc = ax.scatter(
             trj[:,0], 
