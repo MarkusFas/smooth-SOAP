@@ -14,7 +14,7 @@ from smoothsoap.methods import (
     PCAfull, PCAtest, LDA, SpatialPCA, 
     SpatialTempPCA, ScikitPCA, CumulantPCA, 
     CumulantIVAC, DistinctPCA, PCAnorm, 
-    SpatialIVAC, SpatialIVACnorm,
+    SpatialIVAC, SpatialIVACnorm, PCA_time_norm,
 )
 from smoothsoap.setup.simulation import run_simulation
 from smoothsoap.setup.simulation_test import run_simulation_test
@@ -308,6 +308,8 @@ def setup_simulation(**kwargs):
                                 elif method.upper() == 'SPATIALTEMPPCA':
                                     #TODO add input check
                                     method_obj = SpatialTempPCA(descriptor, interval, sigma, spatial_cutoff, ridge_alpha, run_dir)
+                                elif method.upper() == 'PCATIMENORM':
+                                    method_obj = PCA_time_norm(descriptor, interval, ridge_alpha, run_dir)
                                 elif method.upper() == 'LDA':
                                     method_obj = LDA(descriptor, interval, ridge_alpha, run_dir)
                                 elif method.upper() == 'TICA':

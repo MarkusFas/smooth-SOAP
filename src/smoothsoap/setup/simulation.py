@@ -112,26 +112,6 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
                     max_iter=500
                 )
 
-            #4 Post processing
-            post_processing(X, trj_predict, test_atoms, method, method.label, **kwargs)
-            if kwargs["ridge"]:
-                post_processing(X_ridge, trj_predict, test_atoms, method, method.label + f'_ridge', **kwargs)
-            if kwargs["predict_avg"] and (method.name == "SpatialPCA" or method.name == "PCAfull"):
-                X_fromavg = method.predict_avg(trj_predict, test_atoms) ##centers N,T,P
-                X_fromavg = [proj.transpose(1,0,2) for proj in X_fromavg]
-                print('Finished the prediction for averaged')
-                post_processing(X_fromavg, trj_predict, test_atoms, method, method.label + f'_fromavg', **kwargs)
-            if kwargs["output_per_structure"]:
-                X = [np.mean(x, axis=1)[:, np.newaxis, :] for x in X]
-                newlabel = method.label + f"_per_structure"
-                post_processing(X, trj_predict, test_atoms, method, newlabel, **kwargs)
-                if kwargs["ridge"]:
-                    X_ridge = [np.mean(x, axis=1)[:, np.newaxis, :] for x in X_ridge]
-                    post_processing(X_ridge, trj_predict, test_atoms, method, newlabel+ f'_ridge', **kwargs)
-                if kwargs["predict_avg"] and (method.name == "SpatialPCA" or method.name == "PCAfull"):
-                    X_fromavg = [np.mean(x, axis=1)[:, np.newaxis, :] for x in X_fromavg]
-                    post_processing(X_fromavg, trj_predict, test_atoms, method, newlabel + f'_fromavg', **kwargs)
-
             if kwargs["model_save"]:
                 for i, trans in enumerate(method.transformations):
                     method.descriptor.set_atom_types(trj)
@@ -168,6 +148,26 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
                     #method.descriptor.save_model(path=method.root+f'/interval_{method.interval}/', name='model_soap')   
                     #print(f'saved model at {method.root}'+f'/interval_{method.interval}/')    
                     method.descriptor.save_model(path=method.label, name='model_soap') 
+
+            #4 Post processing
+            post_processing(X, trj_predict, test_atoms, method, method.label, **kwargs)
+            if kwargs["ridge"]:
+                post_processing(X_ridge, trj_predict, test_atoms, method, method.label + f'_ridge', **kwargs)
+            if kwargs["predict_avg"] and (method.name == "SpatialPCA" or method.name == "PCAfull"):
+                X_fromavg = method.predict_avg(trj_predict, test_atoms) ##centers N,T,P
+                X_fromavg = [proj.transpose(1,0,2) for proj in X_fromavg]
+                print('Finished the prediction for averaged')
+                post_processing(X_fromavg, trj_predict, test_atoms, method, method.label + f'_fromavg', **kwargs)
+            if kwargs["output_per_structure"]:
+                X = [np.mean(x, axis=1)[:, np.newaxis, :] for x in X]
+                newlabel = method.label + f"_per_structure"
+                post_processing(X, trj_predict, test_atoms, method, newlabel, **kwargs)
+                if kwargs["ridge"]:
+                    X_ridge = [np.mean(x, axis=1)[:, np.newaxis, :] for x in X_ridge]
+                    post_processing(X_ridge, trj_predict, test_atoms, method, newlabel+ f'_ridge', **kwargs)
+                if kwargs["predict_avg"] and (method.name == "SpatialPCA" or method.name == "PCAfull"):
+                    X_fromavg = [np.mean(x, axis=1)[:, np.newaxis, :] for x in X_fromavg]
+                    post_processing(X_fromavg, trj_predict, test_atoms, method, newlabel + f'_fromavg', **kwargs)
 
 if __name__ == '__main__':
     print('Nothing to do here')
