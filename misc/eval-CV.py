@@ -91,6 +91,7 @@ if __name__ == "__main__":
             )
     CVs = []
     CVs_per_atom = []
+    sel_atoms = []
     for system in systems:
         cv = CVmodel(
             systems=[system],
@@ -99,12 +100,18 @@ if __name__ == "__main__":
         )
         CVs.append(cv['features'].block().values)
         CVs_per_atom.append(cv['features/per_atom'].block().values)
+        sel_atoms.append(cv['features/per_atom'].block().samples.values)
 
-    CVperatom = torch.stack(CVs_per_atom, dim=0).squeeze().numpy()
-    CV = torch.stack(CVs, dim=0).squeeze().numpy()
-
-    io = structures[0].get_atomic_numbers() == 8
-    ins = [np.where(np.isin(frame.symbols, ["O"]))[0] for frame in structures] #O indices
+    N = len(structures)
+    CVperatom = [Cpa[:,0].numpy() for Cpa in CVs_per_atom]
+    #torch.stack(CVs_per_atom, dim=0).squeeze().numpy()
+    CV = [C[:,0].numpy() for C in CVs]
+    #CV = torch.stack(CVs, dim=0).squeeze().numpy()
+    plt.plot(CV)
+    ins = [sel[:,1] for sel in sel_atoms]
+    CVperatom_full = np.zeros((N, len(structures[0])))
+    for f in range(N):
+        CVperatom_full[f, ins[f]] = CVperatom[f]
 
     time=[]
     #for atoms in traj:
@@ -113,26 +120,14 @@ if __name__ == "__main__":
 
     envs = []
     for j in range(len(structures)):
-        for i in ins[0]:
+        for i in ins[j]:
             envs.append((j, i, 3.5))
 
-    cs = chemiscope.show(
-        structures, 
-        properties={
-            'time': time,
-            'o_cv': {"values": np.hstack(CVperatom), "target": "atom"},
-            'cv': {"values": CV, "target": "structure"},},
-        mode="structure",
-        settings=chemiscope.quick_settings(trajectory=True, structure_settings={"unitCell":True,
-                'environments': {'activated': True}, 'map': {'color': {'property': 'o_cv'}}, 'color': {'property': 'o_cv', 'min': -0.1,
-                                'max': 0.1, 'transform': 'linear','palette': 'bwr'} }),
-        environments=envs, #[(j,i,3.5) for j in range(len(structures)) for i in io]
-    )
 
 
     properties = {
             'time': time,
-            'cv_peratom': {"values": np.hstack(CVperatom), "target": "atom"},
+            'cv_peratom': {"values": [i for j in CVperatom for i in j], "target": "atom"},
             'cv': {"values": CV, "target": "structure"},
     }
 
@@ -150,7 +145,7 @@ if __name__ == "__main__":
     )
 
     chemiscope.write_input(
-        path=os.path.join(out_path, "trajectory-waterice-CV.json.gz"),
+        path="trajectory-waterice-CV.json.gz",
         # dataset metadata can also be included to provide a self-contained description
         # of the data, authors, and references
         metadata={
