@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import mpltex
 import numpy as np
+from matplotlib.collections import LineCollection
 
 
 @mpltex.acs_decorator
@@ -34,7 +35,6 @@ def plot_compare_atoms(X_values, SOAP_idx, label, properties, intervals):
     for n, X in enumerate(X_values):
         fig, ax = plt.subplots(1,len(SOAP_idx),figsize=( 4*len(SOAP_idx), 4), squeeze=False)
         # plot different atoms
-        
         for j, soap_i in enumerate(SOAP_idx):
             ax[0,j].set_title(fr'{properties[soap_i,0]},{properties[soap_i,1]} $l$ {properties[soap_i,2]}, $n_1$ {properties[soap_i,3]}, $n_2$ {properties[soap_i,4]}')
             ax[0,j].set_xlabel('steps')
@@ -48,6 +48,64 @@ def plot_compare_atoms(X_values, SOAP_idx, label, properties, intervals):
         plt.tight_layout()
         plt.savefig(label+f'_SOAP_compare_atoms_interval_{intervals[n]}.png', dpi=200)
         plt.close()
+        mean = None
+        std = None
+
+
+@mpltex.acs_decorator
+def plot_compare_atoms(X_values, SOAP_idx, label, properties, intervals):
+
+    for n, X in enumerate(X_values):
+        T, N, _ = X.shape
+
+        fig, ax = plt.subplots(
+            1, len(SOAP_idx),
+            figsize=(4 * len(SOAP_idx), 4),
+            squeeze=False
+        )
+
+        t = np.arange(T)
+
+        for j, soap_i in enumerate(SOAP_idx):
+            a = ax[0, j]
+
+            a.set_title(
+                fr'{properties[soap_i,0]},{properties[soap_i,1]} '
+                fr'$l$ {properties[soap_i,2]}, '
+                fr'$n_1$ {properties[soap_i,3]}, '
+                fr'$n_2$ {properties[soap_i,4]}'
+            )
+            a.set_xlabel('steps')
+
+            # View, not copy
+            Xs = X[:, :, soap_i]   # shape (T, N)
+
+            mean = Xs.mean(axis=1)
+            std  = Xs.std(axis=1)
+
+            # Mean + std band
+            a.plot(mean, color='C1', alpha=0.7, label='mean')
+            a.fill_between(t, mean - std, mean + std, color='C0', alpha=0.15)
+
+            # Plot all atoms efficiently as a LineCollection
+            segments = np.stack(
+                [np.column_stack((t, Xs[:, i])) for i in range(N)],
+                axis=0
+            )
+            lc = LineCollection(segments, colors='C0', alpha=0.15, linewidths=0.8)
+            a.add_collection(lc)
+
+            a.autoscale_view()
+            #a.legend()
+
+        plt.tight_layout()
+        plt.savefig(
+            f"{label}_SOAP_compare_atoms_interval_{intervals[n]}.png",
+            dpi=200
+        )
+        plt.close(fig)
+
+
 
 @mpltex.acs_decorator
 def plot_compare_atoms_cum(X_values, SOAP_idx, label, properties, intervals):
