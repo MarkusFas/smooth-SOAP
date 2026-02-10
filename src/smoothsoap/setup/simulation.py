@@ -57,6 +57,20 @@ def split_train_test(trj,trj_test,kwargs, is_shared,randomseed=7):
     # train our method by specifying the selected atoms
     return train_atoms, test_atoms
 
+def do_ridge_fit(method, trj, trj_predict, test_atoms):
+    print('Starting to fit the Ridge ...')
+    
+    #print('fit ridge 2')
+    trj_ridge = list(chain(*trj))
+    method.fit_ridge_nonincremental(trj_ridge)
+    print('Finished the Ridge fit')
+    #X_ridge = method.predict_ridge(trj[0], train_atoms)
+    print('Starting Ridge prediction ...')
+    X_ridge = method.predict_ridge(trj_predict, test_atoms)
+    X_ridge = [proj.transpose(1,0,2) for proj in X_ridge]
+    print('Finished Ridge prediction')
+    return X_ridge
+
 def run_simulation(trj, trj_test, methods_intervals, **kwargs):
     is_shared = False
     if trj_test is None:
@@ -83,22 +97,11 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
         
                 # get predictions with the new representation
                 # for prediction we can use the concatenated trajectories
-        
-        
+         
                 trj_predict = list(chain(*trj_test))
                 if kwargs["ridge"]:
                     #method.fit_ridge(trj_predict)
-                    print('Starting to fit the Ridge ...')
-        
-                    #print('fit ridge 2')
-                    trj_ridge = list(chain(*trj))
-                    method.fit_ridge_nonincremental(trj_ridge)
-                    print('Finished the Ridge fit')
-                    #X_ridge = method.predict_ridge(trj[0], train_atoms)
-                    print('Starting Ridge prediction ...')
-                    X_ridge = method.predict_ridge(trj_predict, test_atoms)
-                    X_ridge = [proj.transpose(1,0,2) for proj in X_ridge]
-                    print('Finished Ridge prediction')
+                    X_ridge=do_ridge_fit(method, trj, trj_predict, test_atoms)
                 
                 print('Starting to predict ...')
                 X = method.predict(trj_predict, test_atoms) ##centers N,T,P
@@ -184,40 +187,41 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
                         #print('---------xshape', len(X), X[0].shape)
                         post_processing(X, trj_predict, test_atoms, method.name, method.label, method.interval, **kwargs)
                         if kwargs["ridge"]:
-                            post_processing(X_ridge, trj_predict, test_atoms, method, method.label + f'_ridge', method.interval, **kwargs)
+                            post_processing(X_ridge, trj_predict, test_atoms, method.name, method.label + f'_ridge', method.interval, **kwargs)
                         if kwargs["predict_avg"] and (method.name == "SpatialPCA" or method.name == "PCAfull"):
                             X_fromavg = method.predict_avg(trj_predict, test_atoms) ##centers N,T,P
                             X_fromavg = [proj.transpose(1,0,2) for proj in X_fromavg]
                             print('Finished the prediction for averaged')
-                            post_processing(X_fromavg, trj_predict, test_atoms, method, method.label + f'_fromavg', method.interval, **kwargs)
+                            post_processing(X_fromavg, trj_predict, test_atoms, method.name, method.label + f'_fromavg', method.interval, **kwargs)
                         if kwargs["output_per_structure"]:
                             X = [np.mean(x, axis=1)[:, np.newaxis, :] for x in X]
                             newlabel = method.label + f"_per_structure"
-                            post_processing(X, trj_predict, test_atoms, method, newlabel, method.interval, **kwargs)
+                            post_processing(X, trj_predict, test_atoms, method.name, newlabel, method.interval, **kwargs)
                             if kwargs["ridge"]:
                                 X_ridge = [np.mean(x, axis=1)[:, np.newaxis, :] for x in X_ridge]
-                                post_processing(X_ridge, trj_predict, test_atoms, method, newlabel+ f'_ridge', method.interval, **kwargs)
+                                post_processing(X_ridge, trj_predict, test_atoms, method.name, newlabel+ f'_ridge', method.interval, **kwargs)
                             if kwargs["predict_avg"] and (method.name == "SpatialPCA" or method.name == "PCAfull"):
                                 X_fromavg = [np.mean(x, axis=1)[:, np.newaxis, :] for x in X_fromavg]
-                                post_processing(X_fromavg, trj_predict, test_atoms, method, newlabel + f'_fromavg', method.interval, **kwargs)
+                                post_processing(X_fromavg, trj_predict, test_atoms, method.name, newlabel + f'_fromavg', method.interval, **kwargs)
 
 
 
     else: # load_model=True
+        print('LOADING OF MODELS HAS BEEN REQUESTED, MANY KEYWORDS IN THE INPUT WILL BE IGNORED')
         models = []  
         for model_path in kwargs['model_load']:
 
-            print(f'loading model from {model_path}')
+            print(f'-------------- Trying to loading model from {model_path} --------------')
             model=load_atomistic_model(model_path)
-            loadedargs=model.metadata().extra
-            print('loaded',loadedargs)         
-            models.append(model)  # nested list: intervals x methods
+            models.append(model) 
 
         for model in models:
+            print(f'-------------- Using model from {model_path} --------------')
+            loadedargs=model.metadata().extra
+            print('Loaded model was computed with the following keywords:',loadedargs)         
+
             train_atoms, test_atoms = split_train_test(trj,trj_test, kwargs, is_shared,randomseed=7)
 
-            #systems = [systems_to_torch(i, dtype=torch.float64) for i in trj_test]
-            #systems = systems_to_torch([i for j in trj_test for i in j], dtype=torch.float64)
             trj_predict = list(chain(*trj_test))
             systems=systems_to_torch(trj_predict, dtype=torch.float64)
             loadedargs=model.metadata().extra
@@ -244,43 +248,40 @@ def run_simulation(trj, trj_test, methods_intervals, **kwargs):
             
             X=[]
             projected=[]
-            #print(systems)
             for system in systems:
-                #print(system)
                 cv=model.forward([system], options=opts, check_consistency=False)
-            #print('cvshaaape',cv['features'][0].values.shape)
-            #print( len(systems), int(cv['features'][0].values.shape[0]/len(systems)), cv['features'][0].values.shape[-1])
                 Xs=cv['features/per_atom'][0].values
-#                print('xsshape',Xs.shape) 
                 projected.append(Xs)
-#                print('proj',len(projected))
-            X.append(np.stack(projected, axis=0))#.transpose(1, 0, 2))
-#            print('---------xshape', len(X), X[0].shape)
+            X.append(np.stack(projected, axis=0))
 
-
-            #print('reshaped',len(X),X[0].shape)
             trj_predict = list(chain(*trj_test))
-            print('methodname',loadedargs['method'])
-            post_processing(X, trj_predict, test_atoms, loadedargs['method'], loadedargs['label'], loadedargs['interval'], **kwargs)
-            if kwargs["ridge"]:
+
+
+            if loadedargs['ridge']:
+                X_ridge=X.copy()
+                del X
+            elif not loadedargs['ridge'] and kwargs['ridge']:
+                print('--- postprocessing with ridge fit for a model without ridge is not implemented ---')
+                
+            if loadedargs["ridge"]:
                 post_processing(X_ridge, trj_predict, test_atoms, loadedargs['method'],  loadedargs['label'] + f'_ridge', loadedargs['interval'] , **kwargs)
-            if kwargs["predict_avg"] and (method.name == "SpatialPCA" or method.name == "PCAfull"):
-                X_fromavg = method.predict_avg(trj_predict, test_atoms) ##centers N,T,P
-                X_fromavg = [proj.transpose(1,0,2) for proj in X_fromavg]
-                print('Finished the prediction for averaged')
-                post_processing(X_fromavg, trj_predict, test_atoms, loadedargs['method'], loadedargs['method'] + f'_fromavg', loadedargs['interval'], **kwargs)
-            if kwargs["output_per_structure"]:
-                X = [np.mean(x, axis=1)[:, np.newaxis, :] for x in X]
-                newlabel = loadedargs['method'] + f"_per_structure"
-                post_processing(X, trj_predict, test_atoms, loadedargs['method'], newlabel, loadedargs['interval'], **kwargs)
-                if kwargs["ridge"]:
+
+                if kwargs["output_per_structure"]:
                     X_ridge = [np.mean(x, axis=1)[:, np.newaxis, :] for x in X_ridge]
+                    newlabel = loadedargs['method'] + f"_per_structure"
                     post_processing(X_ridge, trj_predict, test_atoms, loadedargs['method'], newlabel+ f'_ridge', loadedargs['interval'], **kwargs)
+
+            else:
+                post_processing(X, trj_predict, test_atoms, loadedargs['method'], loadedargs['label'], loadedargs['interval'], **kwargs)
+
+                if kwargs["output_per_structure"]:
+                    X = [np.mean(x, axis=1)[:, np.newaxis, :] for x in X]
+                    newlabel = loadedargs['method'] + f"_per_structure"
+                    post_processing(X, trj_predict, test_atoms, loadedargs['method'], newlabel, loadedargs['interval'], **kwargs)
+
                 if kwargs["predict_avg"] and (method.name == "SpatialPCA" or method.name == "PCAfull"):
                     X_fromavg = [np.mean(x, axis=1)[:, np.newaxis, :] for x in X_fromavg]
                     post_processing(X_fromavg, trj_predict, test_atoms, loadedargs['method'], newlabel + f'_fromavg', loadedargs['interval'], **kwargs)
-
-
 
 
 if __name__ == '__main__':
