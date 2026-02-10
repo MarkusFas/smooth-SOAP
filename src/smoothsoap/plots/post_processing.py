@@ -7,6 +7,7 @@ from smoothsoap.plots.histograms import plot_2pca, plot_2pca_atoms, plot_2pca_he
 
 def post_processing(X, trj_predict, test_atoms, methodname, label, inter,**kwargs):
     print('methodname',methodname, label)
+#    print('trj_predict', len(trj_predict), trj_predict)
     plots = kwargs.get("plots", [])
     i_pca = kwargs.get("i_pca")
     if "onion" in plots:

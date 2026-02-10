@@ -78,7 +78,7 @@ class SOAP_CV(torch.nn.Module):
             return {}
 
         if outputs["features"].per_atom:
-            raise ValueError("per_atom=True is not supported")
+            raise ValueError("per_atom=True is not supported directly, output will be in features/per_atom")
 
         if len(systems[0]) == 0:
             # PLUMED is trying to determine the size of the output
@@ -105,8 +105,6 @@ class SOAP_CV(torch.nn.Module):
             values=projected,
             samples=samples_per_atom,
             components=[],
-            #properties=Labels("soap_pca", torch.tensor([[0]])),
-            #properties=Labels("soap_pca", torch.tensor([[0], [1]])),
             properties=Labels("soap_pca", torch.tensor(self.proj_dims, dtype=torch.int).unsqueeze(-1)),
         )
         cv_per_atom = TensorMap(
@@ -118,10 +116,7 @@ class SOAP_CV(torch.nn.Module):
             values=projected_mean,
             samples=samples,
             components=[],
-            #properties=Labels("soap_pca", torch.tensor([[0]])),
-            #properties=Labels("soap_pca", torch.tensor([[0], [1]])),
-            properties=properties #Labels("soap_pca", torch.tensor(self.proj_dims, dtype=torch.int).unsqueeze(-1)),
-            #properties=Labels("soap_pca", torch.tensor(self.proj_dims, dtype=torch.int).unsqueeze(-1)),
+            properties=Labels("soap_pca", torch.tensor(self.proj_dims, dtype=torch.int).unsqueeze(-1)),
         )
         cv = TensorMap(
             keys=Labels("_", torch.tensor([[0]])),
