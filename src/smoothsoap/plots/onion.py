@@ -84,11 +84,30 @@ def plot_onion(X, atoms, test_atoms, label, delta_t=None, i_pca=0):
         plt.tight_layout()
         plt.savefig(label + f'_onion_states_delta_{delta_t}.png', dpi=200)
         plt.close()
+        plot_histogram_onion(x, bin_centers, pdf, bin_widths, proper_classes, state_list, tot_area, class_to_color, label, delta_t)
         print(f"Saved onion states plot with delta_t={delta_t}")
-        plot_snapshot_onion(labels.reshape(n_particles,-1)[:,0], atoms, test_atoms, label, delta_t, class_to_color)
-    #except Exception as e:
-    #print(f"An error occurred in plot_onion: {e}")
+        plot_snapshot_onion(labels.reshape(n_particles,-1), atoms, test_atoms, label, delta_t, class_to_color)
 
+
+@mpltex.acs_decorator
+def plot_histogram_onion(x, bin_centers, pdf, bin_widths, proper_classes, state_list, tot_area, class_to_color, label, delta_t):
+    fig, ax = plt.subplots(1,1,figsize=(3,1.75))
+    ax.bar(bin_centers, pdf, width=bin_widths, align="center", alpha=0.5)
+    for i, class_ in enumerate(proper_classes):
+        state = state_list[i]
+        mu = state.mean
+        var = state.sigma**2
+        area = (state.area/tot_area)
+        y = np.exp(-0.5*((x - mu)**2 / var))/np.sqrt(2*np.pi*var) * area
+        scale = state.perc #counts[i]/np.sum(counts)
+        color = class_to_color[int(class_)]
+        ax.plot(x, y, c=color, label=fr'{class_}: {scale*100:.1f} $\%$')
+    ax.set_ylabel('PDF')
+    ax.set_xlabel(f'CV')
+    ax.legend(frameon=False)
+    plt.tight_layout()
+    plt.savefig(label + f'_onion_histo_only_{delta_t}.png', dpi=200)
+    plt.close()
 
 def plot_snapshot_onion(labels, atoms, test_atoms, label, delta_t, class_to_color=None):
 

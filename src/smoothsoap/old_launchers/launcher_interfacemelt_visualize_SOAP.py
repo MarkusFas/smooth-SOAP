@@ -3,7 +3,7 @@ from src.smoothsoap.old_scripts.descriptors import SOAP_mean, SOAP_full, SOAP_no
 from src.smoothsoap.transformations.PCAtransform import pcatransform, PCA_obj
 
 from src.smoothsoap.old_scripts.fourier import fourier_trafo
-from src.visualize import plot_compare_atoms, plot_compare_timeave, plot_compare_spatialave, plot_compare_atoms_spat
+from src.smoothsoap.visualize import plot_compare_atoms, plot_compare_timeave, plot_compare_spatialave, plot_compare_atoms_spat
 
 import numpy as np
 from tqdm import tqdm
@@ -15,14 +15,14 @@ import random
 from scipy.stats import moment
 #data1 = '/Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/icemeltinterface/TIP4P/positions.extxyz'
 #data1 = '/Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/interfaces/250_275/positions.lammpstrj'
-data1 = '/Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/interfaces/250_275_fast/positions.lammpstrj'
+data1 = '/Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/icemeltinterface/TIP4P/positions.lammpstrj'
 #data1 = '/Users/markusfasching/EPFL/Work/project-SOAP/scripts/SOAP-time-code/data/interfaces/250/positions.lammpstrj'
 SOAP_cutoff = 5
 SOAP_max_angular = 6
 SOAP_max_radial = 6
 
 centers = [8] # center on Te
-neighbors  = [1,8]
+neighbors  = [8]
 
 HYPER_PARAMETERS = {
     "cutoff": {
@@ -98,7 +98,7 @@ if __name__=='__main__':
     #trj = trj[:2]
 
     print('done loading the structures')
-    dir = f'results/icewaterinterfacemeltfast_lf/ICESPATIAL_notnorm/250_275_fast/test/visual_constantavg_stride/CUTOFF/SOAP_deeptime_single'
+    dir = f'src/smoothsoap/results/icewaterinterfacemeltfast_lf/ICESPATIAL_notnorm/250_275_fast/test/visual_constantavg_stride/CUTOFF/SOAP_deeptime_single'
     #dir = f'results/icewaterinterfacemelt/ALLSPATIAL/visual_constantavg_stride/CUTOFF/SOAP_deeptime_single'
     Path(dir).mkdir(parents=True, exist_ok=True)
     
@@ -150,5 +150,5 @@ if __name__=='__main__':
         label_used = label + f'_{i*20}-{20*(i+1)}'
         #plot_compare_spatialave(X_values, SOAP_idx, label_used, properties.values.numpy(), test_sigmas)
         #plot_compare_atoms_spat(X_values, SOAP_idx, label_used, properties.values.numpy(), test_sigmas)
-        plot_compare_timeave(X_values, SOAP_idx, label_used, properties.values.numpy(), test_intervals)
+        #plot_compare_timeave(X_values, SOAP_idx, label_used, properties.values.numpy(), test_intervals)
         plot_compare_atoms(X_values, SOAP_idx, label_used, properties.values.numpy(), test_intervals)

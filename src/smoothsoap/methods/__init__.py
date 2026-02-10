@@ -1,4 +1,4 @@
-from .pca_methods import PCA, PCAfull, PCAtest, SpatialPCA, SpatialTempPCA, ScikitPCA, CumulantPCA, PCAnorm
+from .pca_methods import PCA, PCAfull, PCAtest, SpatialPCA, SpatialTempPCA, ScikitPCA, CumulantPCA, PCAnorm, PCA_time_norm
 from .temporal_pca_methods import TempPCA
 from .ivac_methods import TICA, IVAC, TILDA, CumulantIVAC
 from .LDAMethod import LDA
@@ -20,5 +20,6 @@ __all__ = [
     "DistinctPCA",
     "PCAnorm",
     "SpatialIVAC",
-    "SpatialIVACnorm"
+    "SpatialIVACnorm",
+    "PCA_time_norm",
 ]
